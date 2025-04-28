@@ -1,0 +1,891 @@
+﻿<script src="https://cdn.jsdelivr.net/npm/konva@9.2.0/konva.min.js"></script>
+
+<style>
+    #tree-container {
+        width: 100%;
+        height: 100%;
+        background-color: #f5f5f5;
+    }
+
+    #button-container {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 10px;
+        flex-direction: column;
+    }
+
+    #fill-position-window {
+        position: absolute;
+        bottom: 50%;
+        left: 50%;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+        display: none;
+        width: 300px;
+        height: fit-content;
+        z-index: 100;
+    }
+
+    #fill-position-window select {
+        width: 100%;
+        margin-top: 10px;
+    }
+</style>
+
+<div id="container" style="position: relative; width: 100%; height: 90vh;">
+    <div id="tree-container"></div>
+    <div id="button-container">
+        <button type="button" title="Zoom In" class="btn" onclick="zoom(1.1)"><i class="bi bi-zoom-in"></i></button>
+        <button type="button" title="Zoom Out" class="btn" onclick="zoom(0.9)"><i class="bi bi-zoom-out"></i></button>
+        <button type="button" title="Fullscreen" class="btn" onclick="toggleFullscreen()"><i class="bi bi-fullscreen"></i></button>
+        @*<button type="button" title="Girar" class="btn" onclick="toggleOrientation()"><i class="bi bi-arrow-clockwise"></i></button>*@
+    </div>
+</div>
+
+<script>
+    // Configurações globais
+    const config = {
+        orientation: 'vertical',
+        nodeWidth: 180,
+        nodeHeight: 70,
+        minHorizontalSpacing: 50,
+        verticalSpacing: 100,
+        card: {
+            isVacant: {
+                fill: '#e04f60',
+                text: "Clique aqui para preencher a posição",
+            },
+            fill: {
+                'PlatformManager': '#cc092f',
+                'ManagementManager': '#e03c50',
+                'RelationshipManager': '#e03c50',
+                'Assistant': '#e03c50',
+                'Diff': '#e04f60'
+            },
+            textColor: '#fff'
+        },
+        lineColor: '#7f8c8d',
+        lineWidth: 2,
+        isHub: {
+            strokeColor: '#2ecc71',
+            strokeWidth: 3
+        },
+        addButton: {
+            size: 20,
+            lineLength: 30,
+            strokeColor: 'black',
+            backGround: {
+                hover: '#dee2e6',
+                natural: 'transparent'
+            },
+            icon: {
+                fill: 'black',
+                align: 'center',
+                text: '\uF4FE',
+                fontSize: 18,
+                fontFamily: 'bootstrap-icons'
+            }
+        }
+    };
+
+    const orgData = {
+        Name: "Carlos",
+        Role: "PlatformManager",
+        Function: { ID: 1, ParentID: 0 },
+        Subordinates: [
+            {
+                Name: "Ana",
+                Role: "ManagementManager",
+                Hub: true,
+                HubName: "Bradesco Prime SP",
+                Function: { ID: 2, ParentID: 1 },
+                Subordinates: [
+                    {
+                        Name: "Bruno",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime SP",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: []
+                    },
+                    {
+                        Name: "Richard",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime SP",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Diana",
+                                Role: "Assistant",
+                                Hub: true,
+                                HubName: "Bradesco Prime SP",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Mariana",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime SP",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: []
+                    }
+                ]
+            },
+            {
+                Name: "Pedro",
+                Role: "ManagementManager",
+                Hub: false,
+                HubName: "",
+                Function: { ID: 2, ParentID: 1 },
+                Subordinates: [
+                    {
+                        Name: "Paula",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: []
+                    },
+                    {
+                        Name: "Roberto",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Heitor",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Geregotango",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Erick",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                Name: "Jorge",
+                Role: "ManagementManager",
+                Hub: true,
+                HubName: "Bradesco Prime II Brasília",
+                Function: { ID: 2, ParentID: 1 },
+                Subordinates: [
+                    {
+                        Name: "Luana",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime II Brasília",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Isabela",
+                                Role: "Assistant",
+                                Hub: true,
+                                HubName: "Bradesco Prime II Brasília",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Tânia",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime II Brasília",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Julia",
+                                Role: "Assistant",
+                                Hub: true,
+                                HubName: "Bradesco Prime II Brasília",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Vitor",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime II Brasília",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: []
+                    }
+                ]
+            },
+            {
+                Name: "Jorge",
+                Role: "ManagementManager",
+                Hub: false,
+                HubName: "",
+                Function: { ID: 2, ParentID: 1 },
+                Subordinates: [
+                    {
+                        Name: "Luana",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Tânia",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Julia",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Vitor",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Kevin",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                Name: "Matheus",
+                Role: "Desenvolvedor",
+                Function: { ID: 5, ParentID: 1 }
+            }
+        ]
+    };
+
+    const container = document.getElementById('tree-container');
+    const stage = new Konva.Stage({
+        container: 'tree-container',
+        width: container.clientWidth,
+        height: container.clientHeight,
+        draggable: true
+    });
+
+    const layer = new Konva.Layer();
+    stage.add(layer);
+
+    const occupiedPositions = new Map();
+
+    function checkCollision(x, y, level) {
+        const key = `${level}-${x.toFixed(0)}`;
+        if (occupiedPositions.has(key)) {
+            const existingY = occupiedPositions.get(key);
+            if (Math.abs(existingY - y) < config.nodeHeight + 20) {
+                return true;
+            }
+        }
+        occupiedPositions.set(key, y);
+        return false;
+    }
+
+    function createAddButton(parentGroup, parentX, parentY, parentWidth, parentHeight, onClick, position = 'bottom') {
+        const buttonGroup = new Konva.Group({ draggable: false, name: 'add-employee-button'});
+
+        let buttonX, buttonY, linePoints;
+
+        if (position === 'left') {
+            buttonX = parentX - config.addButton.size - 30;
+            buttonY = parentY + parentHeight / 2;
+
+            linePoints = [
+                parentX, buttonY,
+                buttonX + config.addButton.size - 10, buttonY
+            ];
+        } else {
+            buttonX = parentX + parentWidth / 2;
+            buttonY = parentY + parentHeight + config.addButton.lineLength;
+
+            linePoints = [
+                buttonX, parentY + parentHeight,
+                buttonX, buttonY - config.addButton.size / 2
+            ];
+        }
+
+        const line = new Konva.Line({
+            points: linePoints,
+            stroke: config.lineColor,
+            strokeWidth: config.lineWidth,
+            lineCap: 'round'
+        });
+
+        const circle = new Konva.Circle({
+            x: buttonX,
+            y: buttonY,
+            radius: config.addButton.size / 2,
+            fill: config.addButton.backGround.natural,
+            stroke: config.addButton.strokeColor,
+            strokeWidth: 1,
+            
+        });
+
+        const plusIcon = new Konva.Text({
+            x: buttonX - 9,
+            y: buttonY - 10,
+            text: config.addButton.icon.text,
+            fontFamily: config.addButton.icon.fontFamily,
+            fontSize: config.addButton.icon.fontSize,
+            fill: config.addButton.icon.fill,
+            align: config.addButton.icon.align
+        });
+
+        buttonGroup.add(line);
+        buttonGroup.add(circle);
+        buttonGroup.add(plusIcon);
+
+        buttonGroup.on('mouseenter', () => {
+            stage.container().style.cursor = 'pointer';
+            circle.fill(config.addButton.backGround.hover);
+            layer.batchDraw();
+        });
+
+        buttonGroup.on('mouseleave', () => {
+            stage.container().style.cursor = 'move';
+            circle.fill(config.addButton.color);
+            layer.batchDraw();
+        });
+
+        buttonGroup.on('click', (e) => {
+            e.cancelBubble = true;
+            openAddEmployeeModal(onClick);
+        });
+
+        layer.add(buttonGroup);
+        return buttonGroup;
+    }
+
+    function openAddEmployeeModal(onConfirm) {
+        if (confirm("Deseja adicionar um novo funcionário?")) {
+            onConfirm();
+        }
+    }
+
+    function openFillPositionWindow() {
+        $('#fill-position-window').remove();
+
+        const fillWindow = $(`
+            <div id="fill-position-window">
+                <label for="candidateSelect" class="noSelect">Selecione um candidato:</label>
+                <select class="form-select" id="candidateSelect">
+                    <option value="">-- Selecione --</option>
+                </select>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-success" id="confirmButton" disabled><i class="bi bi-check"></i></button>
+                    <button type="button" class="btn btn-danger" id="cancelButton"><i class="bi bi-x"></i></button>
+                </div>
+            </div>
+        `);
+
+        $('#container').append(fillWindow);
+
+        $('#fill-position-window').toggle();
+
+        const candidateSelect = $('#candidateSelect');
+        const confirmButton = $('#confirmButton');
+        const cancelButton = $('#cancelButton');
+
+        const candidates = ['Maria Silva', 'John Doe', 'Anna Smith'];
+
+        candidates.forEach(name => {
+            candidateSelect.append(`<option value="${name}">${name}</option>`);
+        });
+
+        candidateSelect.on('change', () => {
+            confirmButton.prop('disabled', candidateSelect.val() === "");
+        });
+
+        cancelButton.on('click', () => {
+            $('#fill-position-window').remove();
+        });
+
+        confirmButton.on('click', () => {
+            alert('Confirmed: ' + candidateSelect.val());
+            $('#fill-position-window').remove();
+        });
+        $('#fill-position-window').draggable({
+            containment: '#container',
+            scroll: false,
+            snap: true,
+            snapMode: 'inner',
+            snapTolerance: 20
+        });
+
+    }
+
+    function createEmployeeCard(employee, level) {
+        const group = new Konva.Group({
+            draggable: false
+        });
+
+        const isVacant = employee.Role === "Empty" || !employee.Name;
+        const cardColor = isVacant ? config.card.isVacant.fill : config.card.fill[employee.Role] || config.card.fill.Diff;
+
+        const rect = new Konva.Rect({
+            width: config.nodeWidth,
+            height: config.nodeHeight,
+            fill: cardColor,
+            stroke: '#ecf0f1',
+            strokeWidth: 2,
+            cornerRadius: 4,
+            shadowColor: 'black',
+            shadowBlur: 5,
+            shadowOpacity: 0.2,
+            perfectDrawEnabled: false,
+            name: 'card-rect'
+        });
+
+        const text = new Konva.Text({
+            text: isVacant ? config.card.isVacant.text : `${employee.Name}\n${employee.Role}`,
+            fontSize: 12,
+            fontStyle: isVacant ? 'normal' : 'bold',
+            width: config.nodeWidth,
+            height: config.nodeHeight,
+            align: 'center',
+            verticalAlign: 'middle',
+            padding: 8,
+            fill: config.card.textColor
+        });
+
+        const infoButton = new Konva.Rect({
+            x: config.nodeWidth / 2,
+            y: 0,
+            width: config.nodeWidth / 2,
+            height: config.nodeHeight,
+            fill: 'rgba(52, 152, 219, 0.5)',
+            visible: false,
+            name: 'info-button'
+        });
+
+        const infoText = new Konva.Text({
+            text: 'i',
+            fontSize: 20,
+            fill: 'white',
+            x: config.nodeWidth * 0.75 - 5,
+            y: config.nodeHeight / 2 - 10,
+            visible: false,
+            name: 'info-text'
+        });
+
+
+        group.add(rect);
+        group.add(text);
+
+        if (!isVacant) {
+            group.add(infoButton);
+            group.add(infoText);
+
+            infoButton.on('click', () => {
+                openEmployeeModal(employee);
+            });
+            infoText.on('click', () => {
+                openEmployeeModal(employee);
+            });
+        } else {
+            group.on('click', () => {
+                openFillPositionWindow();
+            });
+        }
+
+        if (employee.Hub) {
+            rect.stroke(config.isHub.strokeColor);
+            group.setAttr('isHub', true);
+        }
+
+        group.on('mouseenter', () => {
+            stage.container().style.cursor = 'pointer';
+            rect.shadowBlur(10);
+            rect.strokeWidth(3);
+            infoButton.visible(true);
+            infoText.visible(true);
+            layer.batchDraw();
+        });
+
+        group.on('mouseleave', () => {
+            stage.container().style.cursor = 'move';
+            rect.shadowBlur(5);
+            rect.strokeWidth(2);
+            infoButton.visible(false);
+            infoText.visible(false);
+            layer.batchDraw();
+        });
+
+        return group;
+    }
+
+    function openEmployeeModal(employee) {
+        alert(`(Modal) Informações sobre ${employee.Name || 'Carteira Vazia'}:\nRole: ${employee.Role}`);
+    }
+
+    function drawConnections(parentNode, childNodes) {
+        if (!childNodes || childNodes.length === 0) return;
+
+        const isParentHub = parentNode.getAttr('isHub') === true;
+
+        const parentCenterX = parentNode.x() + config.nodeWidth / 2;
+        const parentCenterY = parentNode.y() + config.nodeHeight / 2;
+
+        childNodes.forEach(child => {
+            const isChildHub = child.getAttr('isHub') === true;
+
+            const childCenterX = child.x() + config.nodeWidth / 2;
+            const childCenterY = child.y() + config.nodeHeight / 2;
+
+            const lineColor = (isParentHub && isChildHub) ? config.isHub.strokeColor : config.lineColor;
+
+            let points = [];
+
+            if (config.orientation === 'vertical') {
+                points = [
+                    parentCenterX, parentNode.y() + config.nodeHeight, // meio de baixo do pai
+                    childCenterX, child.y() // meio de cima do filho
+                ];
+            } else { // horizontal
+                points = [
+                    parentNode.x() + config.nodeWidth, parentCenterY, // meio da direita do pai
+                    child.x() - config.minHorizontalSpacing / 2, parentCenterY, // anda pra direita
+                    child.x() - config.minHorizontalSpacing / 2, childCenterY, // sobe ou desce pro centro do filho
+                    child.x(), childCenterY // conecta no lado esquerdo do filho
+                ];
+            }
+
+            const line = new Konva.Line({
+                points: points,
+                stroke: lineColor,
+                strokeWidth: config.lineWidth,
+                lineCap: 'round',
+                lineJoin: 'round'
+            });
+
+            layer.add(line);
+        });
+    }
+
+    function addGG() {
+        orgData.Subordinates.push({
+            Name: "",
+            Role: "Empty",
+            Subordinates: []
+        });
+        renderTree();
+    }
+
+    function addGR(parentNode) {
+        const newGR = {
+            Name: "",
+            Role: "Empty",
+            Subordinates: []
+        };
+
+        parentNode.Subordinates.push(newGR);
+
+        if (parentNode.Hub) {
+            newGR.Hub = true;
+        }
+
+        renderTree();
+    }
+
+    function addAS(parentNode) {
+        if (parentNode.Subordinates.length === 0) {
+            const newAS = {
+                Name: "",
+                Role: "Empty",
+                Subordinates: []
+            };
+
+            if (parentNode.Hub) {
+                newAS.Hub = true;
+            }
+
+            parentNode.Subordinates.push(newAS);
+
+            renderTree();
+        }
+    }
+
+    function calculateSubtreeWidth(node, level) {
+        if (!node.Subordinates || node.Subordinates.length === 0) {
+            return config.nodeWidth;
+        }
+
+        let totalWidth = 0;
+        node.Subordinates.forEach(child => {
+            totalWidth += calculateSubtreeWidth(child, level + 1) + config.minHorizontalSpacing;
+        });
+
+        if (level === 0 || (level === 1 && node.Subordinates.length < 5)) {
+            totalWidth += config.minHorizontalSpacing;
+        }
+
+        return totalWidth - config.minHorizontalSpacing;
+    }
+
+    function drawTree(node, startX, startY, level = 0) {
+        const subtreeWidth = calculateSubtreeWidth(node, level);
+
+        let x = startX;
+        let y = startY;
+
+        if (config.orientation === 'vertical') {
+            x = startX + (subtreeWidth - config.nodeWidth) / 2;
+        } else {
+            y = startY + (subtreeWidth - config.nodeHeight) / 2;
+        }
+
+        let adjustedX = x;
+        let adjustedY = y;
+        let attempts = 0;
+
+        while (checkCollision(adjustedX, adjustedY, level) && attempts < 10) {
+            if (config.orientation === 'vertical') {
+                adjustedY += config.nodeHeight / 2;
+            } else {
+                adjustedX += config.nodeWidth / 2;
+            }
+            attempts++;
+        }
+
+        const nodeGroup = createEmployeeCard(node, level);
+        nodeGroup.position({ x: adjustedX, y: adjustedY });
+
+        if (node.Role === "ManagementManager" && node.Hub) {
+            const hubText = new Konva.Text({
+                text: node.HubName,
+                fontSize: 22,
+                fontFamily: 'Calibri',
+                fill: config.isHub.strokeColor,
+                width: 200,
+                align: 'left',
+            });
+
+            hubText.position({
+                x: config.nodeWidth + 10,
+                y: (config.nodeHeight - hubText.height()) / 2
+            });
+
+            nodeGroup.add(hubText);
+        }
+
+        nodeGroup.employee = () => node;
+
+        layer.add(nodeGroup);
+
+        if (node.Subordinates && node.Subordinates.length > 0) {
+            const children = [];
+            let currentX = startX;
+            let currentY = startY;
+
+            node.Subordinates.forEach(child => {
+                const childSubtreeWidth = calculateSubtreeWidth(child, level + 1);
+
+                let childGroup;
+
+                if (config.orientation === 'vertical') {
+                    childGroup = drawTree(
+                        child,
+                        currentX,
+                        adjustedY + config.nodeHeight + config.verticalSpacing,
+                        level + 1
+                    );
+                    currentX += childSubtreeWidth + config.minHorizontalSpacing;
+                } else {
+                    childGroup = drawTree(
+                        child,
+                        adjustedX + config.nodeWidth + config.horizontalSpacing,
+                        currentY,
+                        level + 1
+                    );
+                    currentY += childSubtreeWidth + config.minVerticalSpacing;
+                }
+
+                children.push(childGroup);
+            });
+
+            drawConnections(nodeGroup, children);
+        }
+
+        if (level === 0 && node.Function.ParentID === 0) {
+            createAddButton(
+                layer,
+                adjustedX,
+                adjustedY,
+                config.nodeWidth,
+                config.nodeHeight,
+                () => addGG(),
+                'bottom'
+            );
+        } else if (level === 1 && node.Role === "ManagementManager") {
+            createAddButton(
+                layer,
+                adjustedX,
+                adjustedY,
+                config.nodeWidth,
+                config.nodeHeight,
+                () => addGR(node),
+                'left'
+            );
+        } else if (level === 2 && (!node.Subordinates || node.Subordinates.length === 0) && node.Role === "RelationshipManager") {
+            createAddButton(
+                layer,
+                adjustedX,
+                adjustedY,
+                config.nodeWidth,
+                config.nodeHeight,
+                () => addAS(node),
+                'bottom'
+            );
+        }
+
+        return nodeGroup;
+    }
+
+    function renderTree() {
+        layer.destroyChildren();
+        occupiedPositions.clear();
+
+        const startX = 50;
+        const startY = 50;
+
+        drawTree(orgData, startX, startY);
+        layer.batchDraw();
+
+        fitStageToTree();
+    }
+
+    function fitStageToTree() {
+        const treeBounds = layer.getClientRect();
+        const scale = Math.min(
+            (stage.width() - 100) / treeBounds.width,
+            (stage.height() - 100) / treeBounds.height
+        );
+
+        stage.scale({ x: scale, y: scale });
+        stage.position({
+            x: (stage.width() - treeBounds.width * scale) / 2 - treeBounds.x * scale,
+            y: 20
+        });
+        stage.batchDraw();
+    }
+
+    function zoom(factor) {
+        const oldScale = stage.scaleX();
+        const newScale = oldScale * factor;
+        const pointer = stage.getPointerPosition();
+
+        if (!pointer) {
+            stage.scale({ x: newScale, y: newScale });
+            stage.batchDraw();
+            return;
+        }
+
+        const mousePointTo = {
+            x: (pointer.x - stage.x()) / oldScale,
+            y: (pointer.y - stage.y()) / oldScale,
+        };
+
+        stage.scale({ x: newScale, y: newScale });
+        stage.position({
+            x: pointer.x - mousePointTo.x * newScale,
+            y: pointer.y - mousePointTo.y * newScale,
+        });
+        stage.batchDraw();
+    }
+
+    function toggleFullscreen() {
+        const el = document.getElementById('tree-container');
+        if (!document.fullscreenElement) {
+            el.requestFullscreen().then(updateStageSize);
+        } else {
+            document.exitFullscreen().then(updateStageSize);
+        }
+    }
+
+    function toggleOrientation() {
+        config.orientation = config.orientation === 'vertical' ? 'horizontal' : 'vertical';
+        renderTree();
+    }
+
+    function updateStageSize() {
+        stage.width(container.clientWidth);
+        stage.height(container.clientHeight);
+        renderTree();
+    }
+
+    function shouldRender(x, y) {
+        const viewport = {
+            x: stage.x() * -1,
+            y: stage.y() * -1,
+            width: stage.width(),
+            height: stage.height()
+        };
+
+        const buffer = 300;
+
+        return (
+            x + config.nodeWidth >= viewport.x - buffer &&
+            x <= viewport.x + viewport.width + buffer &&
+            y + config.nodeHeight >= viewport.y - buffer &&
+            y <= viewport.y + viewport.height + buffer
+        );
+    }
+
+    stage.on('wheel', (e) => {
+        e.evt.preventDefault();
+        zoom(e.evt.deltaY < 0 ? 1.05 : 0.95);
+    });
+
+    window.addEventListener('resize', updateStageSize);
+
+    window.onload = () => {
+        renderTree();
+        stage.container().style.cursor = 'move';
+    };
+</script>
