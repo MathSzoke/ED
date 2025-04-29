@@ -42,7 +42,7 @@
         <button type="button" title="Zoom In" class="btn" onclick="zoom(1.1)"><i class="bi bi-zoom-in"></i></button>
         <button type="button" title="Zoom Out" class="btn" onclick="zoom(0.9)"><i class="bi bi-zoom-out"></i></button>
         <button type="button" title="Fullscreen" class="btn" onclick="toggleFullscreen()"><i class="bi bi-fullscreen"></i></button>
-        @*<button type="button" title="Girar" class="btn" onclick="toggleOrientation()"><i class="bi bi-arrow-clockwise"></i></button>*@
+        <button type="button" title="Girar" class="btn" onclick="toggleOrientation()"><i class="bi bi-arrow-clockwise"></i></button>
     </div>
 </div>
 
@@ -326,6 +326,18 @@
         return false;
     }
 
+    function checkCollisionHorizontal(x, y, level) {
+        const key = `${level}-${y.toFixed(0)}`;
+        if (occupiedPositions.has(key)) {
+            const existingX = occupiedPositions.get(key);
+            if (Math.abs(existingX - x) < config.nodeWidth + 20) {
+                return true;
+            }
+        }
+        occupiedPositions.set(key, x);
+        return false;
+    }
+
     function createAddButton(parentGroup, parentX, parentY, parentWidth, parentHeight, onClick, position = 'bottom') {
         const buttonGroup = new Konva.Group({ draggable: false, name: 'add-employee-button'});
 
@@ -567,41 +579,23 @@
     function drawConnections(parentNode, childNodes) {
         if (!childNodes || childNodes.length === 0) return;
 
-        const isParentHub = parentNode.getAttr('isHub') === true;
-
-        const parentCenterX = parentNode.x() + config.nodeWidth / 2;
-        const parentCenterY = parentNode.y() + config.nodeHeight / 2;
+        const parentX = parentNode.x() + config.nodeWidth / 2;
+        const parentY = parentNode.y() + config.nodeHeight;
 
         childNodes.forEach(child => {
-            const isChildHub = child.getAttr('isHub') === true;
+            const childX = child.x() + config.nodeWidth / 2;
+            const childY = child.y();
 
-            const childCenterX = child.x() + config.nodeWidth / 2;
-            const childCenterY = child.y() + config.nodeHeight / 2;
+            const isParentHub = parentNode.getAttr('isHub') === true;
+            const isChildHub = child.getAttr('isHub') === true;
 
             const lineColor = (isParentHub && isChildHub) ? config.isHub.strokeColor : config.lineColor;
 
-            let points = [];
-
-            if (config.orientation === 'vertical') {
-                points = [
-                    parentCenterX, parentNode.y() + config.nodeHeight, // meio de baixo do pai
-                    childCenterX, child.y() // meio de cima do filho
-                ];
-            } else { // horizontal
-                points = [
-                    parentNode.x() + config.nodeWidth, parentCenterY, // meio da direita do pai
-                    child.x() - config.minHorizontalSpacing / 2, parentCenterY, // anda pra direita
-                    child.x() - config.minHorizontalSpacing / 2, childCenterY, // sobe ou desce pro centro do filho
-                    child.x(), childCenterY // conecta no lado esquerdo do filho
-                ];
-            }
-
             const line = new Konva.Line({
-                points: points,
+                points: [parentX, parentY, childX, childY],
                 stroke: lineColor,
                 strokeWidth: config.lineWidth,
-                lineCap: 'round',
-                lineJoin: 'round'
+                lineCap: 'round'
             });
 
             layer.add(line);
@@ -668,33 +662,19 @@
         return totalWidth - config.minHorizontalSpacing;
     }
 
-    function drawTree(node, startX, startY, level = 0) {
+    function drawTree(node, startX, y, level = 0) {
         const subtreeWidth = calculateSubtreeWidth(node, level);
+        const x = startX + (subtreeWidth - config.nodeWidth) / 2;
 
-        let x = startX;
-        let y = startY;
-
-        if (config.orientation === 'vertical') {
-            x = startX + (subtreeWidth - config.nodeWidth) / 2;
-        } else {
-            y = startY + (subtreeWidth - config.nodeHeight) / 2;
-        }
-
-        let adjustedX = x;
         let adjustedY = y;
         let attempts = 0;
-
-        while (checkCollision(adjustedX, adjustedY, level) && attempts < 10) {
-            if (config.orientation === 'vertical') {
-                adjustedY += config.nodeHeight / 2;
-            } else {
-                adjustedX += config.nodeWidth / 2;
-            }
+        while (checkCollision(x, adjustedY, level) && attempts < 10) {
+            adjustedY += config.nodeHeight / 2;
             attempts++;
         }
 
         const nodeGroup = createEmployeeCard(node, level);
-        nodeGroup.position({ x: adjustedX, y: adjustedY });
+        nodeGroup.position({ x, y: adjustedY });
 
         if (node.Role === "ManagementManager" && node.Hub) {
             const hubText = new Konva.Text({
@@ -721,32 +701,12 @@
         if (node.Subordinates && node.Subordinates.length > 0) {
             const children = [];
             let currentX = startX;
-            let currentY = startY;
 
             node.Subordinates.forEach(child => {
                 const childSubtreeWidth = calculateSubtreeWidth(child, level + 1);
-
-                let childGroup;
-
-                if (config.orientation === 'vertical') {
-                    childGroup = drawTree(
-                        child,
-                        currentX,
-                        adjustedY + config.nodeHeight + config.verticalSpacing,
-                        level + 1
-                    );
-                    currentX += childSubtreeWidth + config.minHorizontalSpacing;
-                } else {
-                    childGroup = drawTree(
-                        child,
-                        adjustedX + config.nodeWidth + config.horizontalSpacing,
-                        currentY,
-                        level + 1
-                    );
-                    currentY += childSubtreeWidth + config.minVerticalSpacing;
-                }
-
+                const childGroup = drawTree(child, currentX, adjustedY + config.nodeHeight + config.verticalSpacing, level + 1);
                 children.push(childGroup);
+                currentX += childSubtreeWidth + config.minHorizontalSpacing;
             });
 
             drawConnections(nodeGroup, children);
@@ -755,7 +715,7 @@
         if (level === 0 && node.Function.ParentID === 0) {
             createAddButton(
                 layer,
-                adjustedX,
+                x,
                 adjustedY,
                 config.nodeWidth,
                 config.nodeHeight,
@@ -765,7 +725,7 @@
         } else if (level === 1 && node.Role === "ManagementManager") {
             createAddButton(
                 layer,
-                adjustedX,
+                x,
                 adjustedY,
                 config.nodeWidth,
                 config.nodeHeight,
@@ -775,7 +735,7 @@
         } else if (level === 2 && (!node.Subordinates || node.Subordinates.length === 0) && node.Role === "RelationshipManager") {
             createAddButton(
                 layer,
-                adjustedX,
+                x,
                 adjustedY,
                 config.nodeWidth,
                 config.nodeHeight,
@@ -787,6 +747,127 @@
         return nodeGroup;
     }
 
+    function calculateSubtreeHeight(node) {
+        const children = node.children || node.Subordinates || [];
+        if (children.length === 0) {
+            return config.nodeHeight;
+        }
+
+        let height = 0;
+        for (const child of children) {
+            height += calculateSubtreeHeight(child) + config.verticalSpacing;
+        }
+
+        return height - config.verticalSpacing;
+    }
+
+    function drawConnectionsHorizontal(parentCard, childCards) {
+        if (!childCards || childCards.length === 0) return;
+
+        const parentX = parentCard.x() + config.nodeWidth;
+        const parentY = parentCard.y() + config.nodeHeight / 2;
+
+        childCards.forEach(child => {
+            const childX = child.x();
+            const childY = child.y() + config.nodeHeight / 2;
+
+            const isParentHub = parentCard.getAttr('isHub') === true;
+            const isChildHub = child.getAttr('isHub') === true;
+
+            const lineColor = (isParentHub && isChildHub) ? config.isHub.strokeColor : config.lineColor;
+
+            const line = new Konva.Line({
+                points: [parentX, parentY, childX, childY],
+                stroke: lineColor,
+                strokeWidth: config.lineWidth,
+                lineCap: 'round',
+                lineJoin: 'round'
+            });
+
+            layer.add(line);
+        });
+    }
+
+    function drawTreeHorizontal(node, parent = null, level = 0, posY = 0, posX = 0) {
+        if (!node) return;
+
+        const card = createEmployeeCard(node, level);
+        const adjustedX = posX;
+        let adjustedY = posY;
+
+        while (checkCollisionHorizontal(adjustedX, adjustedY, level)) {
+            adjustedY += config.nodeHeight + config.verticalSpacing;
+        }
+
+        card.position({ x: adjustedX, y: adjustedY });
+        layer.add(card);
+
+        if (node.Role === "ManagementManager" && node.Hub) {
+            const cardPos = card.getAbsolutePosition();
+
+            const hubText = new Konva.Text({
+                text: node.HubName,
+                fontSize: 22,
+                fontFamily: 'Calibri',
+                fill: config.isHub.strokeColor,
+                align: 'center',
+                width: config.nodeWidth
+            });
+
+            hubText.position({
+                x: 0,
+                y: -50
+            });
+
+            card.add(hubText);
+        }
+
+        if (parent && parent.card) {
+            drawConnectionsHorizontal(parent.card, [card]);
+        }
+
+        const children = node.children || node.Subordinates || [];
+        const spacing = config.nodeWidth * 2;
+
+        let totalChildHeight = 0;
+        const childrenHeights = [];
+
+        for (const child of children) {
+            const h = calculateSubtreeHeight(child);
+            childrenHeights.push(h);
+            totalChildHeight += h;
+        }
+        totalChildHeight += (children.length - 1.7) * config.verticalSpacing;
+
+        let childY = adjustedY - totalChildHeight / 2;
+
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            drawTreeHorizontal(
+                child,
+                { node, card },
+                level + 1,
+                childY,
+                adjustedX + spacing
+            );
+            childY += childrenHeights[i] + config.verticalSpacing;
+        }
+
+        if (level === 0 && node.Function?.ParentID === 0) {
+            createAddButton(layer, adjustedX, adjustedY, config.nodeWidth, config.nodeHeight,
+                () => addGG(), 'right');
+        }
+        else if (level === 1 && node.Role === "ManagementManager") {
+            createAddButton(layer, adjustedX, adjustedY, config.nodeWidth, config.nodeHeight,
+                () => addGR(node), 'right');
+        }
+        else if (level === 2 && node.Role === "RelationshipManager" &&
+            (!node.Subordinates || node.Subordinates.length === 0)) {
+            createAddButton(layer, adjustedX, adjustedY, config.nodeWidth, config.nodeHeight,
+                () => addAS(node), 'right');
+        }
+    }
+
     function renderTree() {
         layer.destroyChildren();
         occupiedPositions.clear();
@@ -794,9 +875,13 @@
         const startX = 50;
         const startY = 50;
 
-        drawTree(orgData, startX, startY);
-        layer.batchDraw();
+        if (config.orientation === 'horizontal') {
+            drawTree(orgData, startX, startY);
+        } else if (config.orientation === 'vertical') {
+            drawTreeHorizontal(orgData, null, 0, startX, startY);
+        }
 
+        layer.batchDraw();
         fitStageToTree();
     }
 
