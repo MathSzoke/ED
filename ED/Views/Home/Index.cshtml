@@ -1,5 +1,62 @@
 ﻿@{
     ViewBag.Title = "Home Page";
 }
+<style>
+    #view-toggle-buttons {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 2000;
+        display: flex;
+        gap: 10px;
+    }
 
-@Html.Action("Index_v2", "Platform")
+    .btn-view-toggle {
+        background-color: white;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 18px;
+        color: #333;
+        transition: all 0.2s ease;
+    }
+
+        .btn-view-toggle.active,
+        .btn-view-toggle:hover {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+</style>
+
+<div id="view-toggle-buttons">
+    <button class="btn btn-view-toggle" id="gridViewBtn" onclick="showView('grid')">
+        <i class="bi bi-grid"></i>
+    </button>
+    <button class="btn btn-view-toggle active" id="canvasViewBtn" onclick="showView('canvas')">
+        <i class="bi bi-diagram-3"></i>
+    </button>
+</div>
+
+<div id="grid-view" style="display:none;">
+    @Html.Action("Index", "Platform")
+</div>
+
+<div id="canvas-view">
+    @Html.Action("Index_v2", "Platform")
+</div>
+
+<script>
+    function showView(viewName) {
+        if (viewName === 'grid') {
+            $('#grid-view').show();
+            $('#canvas-view').hide();
+        } else {
+            $('#grid-view').hide();
+            $('#canvas-view').show();
+        }
+
+        document.querySelectorAll('.btn-view-toggle').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(viewName + 'ViewBtn').classList.add('active');
+    }
+</script>

@@ -8,10 +8,13 @@ namespace ED.Controllers
 {
     public class PlatformController : Controller
     {
-        // GET: Platform
+        public ActionResult Index()
+        {
+            return PartialView();
+        }
         public ActionResult Index_v2()
         {
-            return View();
+            return PartialView();
         }
     }
 }
