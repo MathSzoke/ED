@@ -469,7 +469,6 @@
             snapMode: 'inner',
             snapTolerance: 20
         });
-
     }
 
     function createEmployeeCard(employee, level) {
@@ -925,7 +924,7 @@
     }
 
     function toggleFullscreen() {
-        const el = document.getElementById('tree-container');
+        const el = document.getElementById('container');
         if (!document.fullscreenElement) {
             el.requestFullscreen().then(updateStageSize);
         } else {
@@ -934,7 +933,7 @@
     }
 
     function toggleOrientation() {
-        config.orientation = config.orientation === 'vertical' ? 'horizontal' : 'vertical';
+        config.orientation = config.orientation === 'horizontal' ? 'vertical' : 'horizontal';
         renderTree();
     }
 
