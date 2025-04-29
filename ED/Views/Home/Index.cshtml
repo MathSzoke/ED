@@ -27,36 +27,74 @@
             color: white;
             border-color: #007bff;
         }
+    .view-container {
+        position: relative;
+        min-height: 80vh;
+    }
+    .hidden-view {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+        width: 100%;
+        height: 100%;
+    }
 </style>
 
 <div id="view-toggle-buttons">
-    <button class="btn btn-view-toggle" id="gridViewBtn" onclick="showView('grid')">
+    <button class="btn btn-view-toggle active" id="gridViewBtn" onclick="loadView('grid')">
         <i class="bi bi-grid"></i>
     </button>
-    <button class="btn btn-view-toggle active" id="canvasViewBtn" onclick="showView('canvas')">
+    <button class="btn btn-view-toggle" id="canvasViewBtn" onclick="loadView('canvas')">
         <i class="bi bi-diagram-3"></i>
     </button>
 </div>
 
-<div id="grid-view" style="display:none;">
-    @Html.Action("Index", "Platform")
-</div>
-
-<div id="canvas-view">
-    @Html.Action("Index_v2", "Platform")
+<div class="view-container">
+    <div id="grid-view"></div>
+    <div id="canvas-view" class="hidden-view"></div>
 </div>
 
 <script>
-    function showView(viewName) {
-        if (viewName === 'grid') {
-            $('#grid-view').show();
-            $('#canvas-view').hide();
+    function loadView(viewType) {
+        document.querySelectorAll('.btn-view-toggle').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(viewType + 'ViewBtn').classList.add('active');
+
+        if (viewType === 'grid') {
+            $('#canvas-view').addClass('hidden-view');
+            $('#grid-view').removeClass('hidden-view');
+
+            if (!$('#grid-view').html()) {
+                $('#grid-view').load('@Url.Action("Index", "Platform")');
+            }
         } else {
-            $('#grid-view').hide();
-            $('#canvas-view').show();
+            $('#grid-view').addClass('hidden-view');
+            $('#canvas-view').removeClass('hidden-view');
+
+            if (!$('#canvas-view').html()) {
+                $('#canvas-view').load('@Url.Action("Index_v2", "Platform")', function() {
+                    setTimeout(initializeCanvas, 100);
+                });
+            } else {
+                initializeCanvas();
+            }
+        }
+    }
+
+    function initializeCanvas() {
+        if (window.konvaStage) {
+            window.konvaStage.destroy();
         }
 
-        document.querySelectorAll('.btn-view-toggle').forEach(btn => btn.classList.remove('active'));
-        document.getElementById(viewName + 'ViewBtn').classList.add('active');
+        if (document.getElementById('tree-container')) {
+            renderTree();
+        } else {
+            console.error('Canvas container not found!');
+        }
     }
+
+    $(document).ready(function() {
+        loadView('grid');
+    });
 </script>
