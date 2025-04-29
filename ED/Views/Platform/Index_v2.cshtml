@@ -874,8 +874,11 @@
         layer.destroyChildren();
         occupiedPositions.clear();
 
-        const startX = 0;
-        const startY = 0;
+        const stageWidth = stage.width();
+        const stageHeight = stage.height();
+
+        const startX = stageWidth / 2;
+        const startY = stageHeight / 2;
 
         if (config.orientation === 'horizontal') {
             drawTree(orgData, startX, startY);
@@ -883,11 +886,37 @@
             drawTreeHorizontal(orgData, null, 0, startX, startY);
         }
 
-        stage.scale({ x: 1, y: 1 });
+        centerContent();
 
         layer.batchDraw();
-        fitStageToTree();
         window.konvaInitialized = true;
+    }
+
+    function centerContent() {
+        stage.scale({ x: 1, y: 1 });
+        layer.position({ x: 0, y: 0 });
+
+        layer.batchDraw();
+
+        const contentBounds = layer.getClientRect();
+
+        const stageCenterX = stage.width() / 2;
+        const stageCenterY = stage.height() / 2;
+
+        const contentCenterX = contentBounds.x + contentBounds.width / 4;
+        const contentCenterY = contentBounds.y + contentBounds.height / 4;
+
+        const offsetX = stageCenterX - contentCenterX;
+        const offsetY = stageCenterY - contentCenterY;
+
+        layer.position({
+            x: offsetX,
+            y: offsetY
+        });
+
+        fitStageToTree();
+
+        layer.batchDraw();
     }
 
     function fitStageToTree() {
