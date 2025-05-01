@@ -1,55 +1,5 @@
-ï»¿@model dynamic
-
-<style>
-    #tree-container {
-        width: 100%;
-        height: 100%;
-        background-color: #f5f5f5;
-    }
-
-    #button-container {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        display: flex;
-        gap: 10px;
-        flex-direction: column;
-    }
-
-    #fill-position-window {
-        position: absolute;
-        bottom: 50%;
-        left: 50%;
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
-        display: none;
-        width: 400px;
-        height: fit-content;
-        z-index: 100;
-        text-align: center;
-    }
-
-        #fill-position-window select {
-            width: 100%;
-            margin-top: 10px;
-            display: ruby;
-        }
-</style>
-
-<div id="container" style="position: relative; width: 100%; height: 100%;">
-    <div id="tree-container"></div>
-    <div id="button-container">
-        <button type="button" title="Zoom In" class="btn" onclick="zoom(1.1)"><i class="bi bi-zoom-in"></i></button>
-        <button type="button" title="Zoom Out" class="btn" onclick="zoom(0.9)"><i class="bi bi-zoom-out"></i></button>
-        <button type="button" title="Fullscreen" class="btn" onclick="toggleFullscreen()"><i class="bi bi-fullscreen"></i></button>
-        <button type="button" title="Girar" class="btn" onclick="toggleOrientation()"><i class="bi bi-arrow-clockwise"></i></button>
-    </div>
-</div>
-
-<script>
-    // ConfiguraÃ§Ãµes globais
+window.initializeCanvas = function () {
+    // Configurações globais
     const config = {
         orientation: 'vertical',
         nodeWidth: 180,
@@ -59,7 +9,7 @@
         card: {
             isVacant: {
                 fill: '#e04f60',
-                text: "Clique aqui para preencher a posiÃ§Ã£o",
+                text: "Clique aqui para preencher a posição",
             },
             fill: {
                 'PlatformManager': '#cc092f',
@@ -68,31 +18,10 @@
                 'Assistant': '#e03c50',
                 'Diff': '#e04f60'
             },
-            textColor: '#fff',
-            infoButton: {
-                fill: 'rgba(52, 152, 219, 0.5)',
-                name: 'info-button',
-                infoText: {
-                    fill: 'white',
-                    name: 'info-text',
-                    text: 'i',
-                    fontSize: 20
-                }
-            },
-            line: {
-                hover: {
-                    width: 3,
-                    color: '',
-                    shadowBlur: 10,
-                },
-                unhover: {
-                    width: 2,
-                    color: '',
-                    shadowBlur: 5,
-                },
-            }
+            textColor: '#fff'
         },
         lineColor: '#7f8c8d',
+        lineWidth: 2,
         isHub: {
             strokeColor: '#2ecc71',
             strokeWidth: 3
@@ -115,9 +44,216 @@
         }
     };
 
-    const orgData = @Html.Raw(Json.Encode(Model));
+    const orgData = {
+        Name: "Carlos",
+        Role: "PlatformManager",
+        Function: { ID: 1, ParentID: 0 },
+        Subordinates: [
+            {
+                Name: "Ana",
+                Role: "ManagementManager",
+                Hub: true,
+                HubName: "Bradesco Prime SP",
+                Function: { ID: 2, ParentID: 1 },
+                Subordinates: [
+                    {
+                        Name: "Bruno",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime SP",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: []
+                    },
+                    {
+                        Name: "Richard",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime SP",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Diana",
+                                Role: "Assistant",
+                                Hub: true,
+                                HubName: "Bradesco Prime SP",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Mariana",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime SP",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: []
+                    }
+                ]
+            },
+            {
+                Name: "Pedro",
+                Role: "ManagementManager",
+                Hub: false,
+                HubName: "",
+                Function: { ID: 2, ParentID: 1 },
+                Subordinates: [
+                    {
+                        Name: "Paula",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: []
+                    },
+                    {
+                        Name: "Roberto",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Heitor",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Geregotango",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Erick",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                Name: "Jorge",
+                Role: "ManagementManager",
+                Hub: true,
+                HubName: "Bradesco Prime II Brasília",
+                Function: { ID: 2, ParentID: 1 },
+                Subordinates: [
+                    {
+                        Name: "Luana",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime II Brasília",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Isabela",
+                                Role: "Assistant",
+                                Hub: true,
+                                HubName: "Bradesco Prime II Brasília",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Tânia",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime II Brasília",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Julia",
+                                Role: "Assistant",
+                                Hub: true,
+                                HubName: "Bradesco Prime II Brasília",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Vitor",
+                        Role: "RelationshipManager",
+                        Hub: true,
+                        HubName: "Bradesco Prime II Brasília",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: []
+                    }
+                ]
+            },
+            {
+                Name: "Jorge",
+                Role: "ManagementManager",
+                Hub: false,
+                HubName: "",
+                Function: { ID: 2, ParentID: 1 },
+                Subordinates: [
+                    {
+                        Name: "Luana",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Tânia",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Julia",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    },
+                    {
+                        Name: "Vitor",
+                        Role: "RelationshipManager",
+                        Hub: false,
+                        HubName: "",
+                        Function: { ID: 3, ParentID: 2 },
+                        Subordinates: [
+                            {
+                                Name: "Kevin",
+                                Role: "Assistant",
+                                Hub: false,
+                                HubName: "",
+                                Function: { ID: 4, ParentID: 3 }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                Name: "Matheus",
+                Role: "Desenvolvedor",
+                Function: { ID: 5, ParentID: 1 }
+            }
+        ]
+    };
 
-    const container = document.getElementById('tree-container');
+    const container = $('#tree-container');
     const stage = new Konva.Stage({
         container: 'tree-container',
         width: container.clientWidth,
@@ -159,45 +295,22 @@
 
         let buttonX, buttonY, linePoints;
 
-        switch (position) {
-            case 'left':
-                buttonX = parentX - config.addButton.size - 30;
-                buttonY = parentY + parentHeight / 2;
+        if (position === 'left') {
+            buttonX = parentX - config.addButton.size - 30;
+            buttonY = parentY + parentHeight / 2;
 
-                linePoints = [
-                    parentX, buttonY,
-                    buttonX + config.addButton.size - 10, buttonY
-                ];
-                break;
+            linePoints = [
+                parentX, buttonY,
+                buttonX + config.addButton.size - 10, buttonY
+            ];
+        } else {
+            buttonX = parentX + parentWidth / 2;
+            buttonY = parentY + parentHeight + config.addButton.lineLength;
 
-            case 'right':
-                buttonX = parentX + parentWidth + config.addButton.size + 30;
-                buttonY = parentY + parentHeight / 2;
-
-                linePoints = [
-                    parentX + parentWidth, buttonY,
-                    buttonX - config.addButton.size + 10, buttonY
-                ];
-                break;
-
-            case 'top':
-                buttonX = parentX + parentWidth / 2;
-                buttonY = parentY - config.addButton.lineLength;
-
-                linePoints = [
-                    buttonX, parentY,
-                    buttonX, buttonY + config.addButton.size / 2
-                ];
-                break;
-
-            default: // bottom (default)
-                buttonX = parentX + parentWidth / 2;
-                buttonY = parentY + parentHeight + config.addButton.lineLength;
-
-                linePoints = [
-                    buttonX, parentY + parentHeight,
-                    buttonX, buttonY - config.addButton.size / 2
-                ];
+            linePoints = [
+                buttonX, parentY + parentHeight,
+                buttonX, buttonY - config.addButton.size / 2
+            ];
         }
 
         const line = new Konva.Line({
@@ -253,72 +366,55 @@
     }
 
     function openAddEmployeeModal(onConfirm) {
-        if (confirm("Deseja adicionar um novo funcionÃ¡rio?")) {
+        if (confirm("Deseja adicionar um novo funcionário?")) {
             onConfirm();
         }
     }
 
-    function openFillPositionWindow(positionCode, roleName, parentId, junction) {
+    function openFillPositionWindow() {
         $('#fill-position-window').remove();
 
         const fillWindow = $(`
-        <div id="fill-position-window">
-            <h5>Preencher posiÃ§Ã£o de ${roleName}</h5>
-            <label for="candidateSelect" class="noSelect">Selecione um candidato:</label>
-            <select class="form-select candidate-select" id="candidateSelect">
-                <option value="">-- Selecione --</option>
-            </select>
-            <div class="d-flex justify-content-between mt-3">
-                <button type="button" class="btn btn-success confirm-button" disabled>
-                    <i class="bi bi-check"></i> Confirmar
-                </button>
-                <button type="button" class="btn btn-danger cancel-button">
-                    <i class="bi bi-x"></i> Cancelar
-                </button>
+            <div id="fill-position-window">
+                <label for="candidateSelect" class="noSelect">Selecione um candidato:</label>
+                <select class="form-select" id="candidateSelect">
+                    <option value="">-- Selecione --</option>
+                </select>
+
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-success" id="confirmButton" disabled><i class="bi bi-check"></i></button>
+                    <button type="button" class="btn btn-danger" id="cancelButton"><i class="bi bi-x"></i></button>
+                </div>
             </div>
-        </div>
-    `);
+        `);
 
         $('#container').append(fillWindow);
+
         $('#fill-position-window').toggle();
 
-        const $fillWindow = $('#fill-position-window');
-        const $candidateSelect = $fillWindow.find('.candidate-select');
-        const $confirmButton = $fillWindow.find('.confirm-button');
-        const $cancelButton = $fillWindow.find('.cancel-button');
+        const candidateSelect = $('#candidateSelect');
+        const confirmButton = $('#confirmButton');
+        const cancelButton = $('#cancelButton');
 
-        $.get('/Employee/Candidates', { parentId: parentId, junction: junction }, function (candidates) {
-            candidates.forEach(candidate => {
-                $candidateSelect.append(`<option value="${candidate.FunctionalCode}">${candidate.FunctionalCode} - ${candidate.Name}</option>`);
-            });
+        const candidates = ['Maria Silva', 'John Doe', 'Anna Smith'];
+
+        candidates.forEach(name => {
+            candidateSelect.append(`<option value="${name}">${name}</option>`);
         });
 
-        $candidateSelect.on('change', function () {
-            $confirmButton.prop('disabled', $(this).val() === "");
+        candidateSelect.on('change', () => {
+            confirmButton.prop('disabled', candidateSelect.val() === "");
         });
 
-        $cancelButton.on('click', function () {
-            $fillWindow.remove();
+        cancelButton.on('click', () => {
+            $('#fill-position-window').remove();
         });
 
-        $confirmButton.on('click', function () {
-            const candidateId = $candidateSelect.val();
-
-            $.post('/api/positions/fill', {
-                positionCode: positionCode,
-                candidateId: candidateId
-            }, function (response) {
-                if (response.success) {
-                    alert('PosiÃ§Ã£o preenchida com sucesso!');
-                    renderTree();
-                } else {
-                    alert('Erro ao preencher posiÃ§Ã£o: ' + response.message);
-                }
-                $fillWindow.remove();
-            });
+        confirmButton.on('click', () => {
+            alert('Confirmed: ' + candidateSelect.val());
+            $('#fill-position-window').remove();
         });
-
-        $fillWindow.draggable({
+        $('#fill-position-window').draggable({
             containment: '#container',
             scroll: false,
             snap: true,
@@ -327,35 +423,20 @@
         });
     }
 
-    function getRoleFromPositionCode(positionCode) {
-        const codePrefix = Math.floor(positionCode / 10000000);
-
-        switch (codePrefix) {
-            case 99: return 'PlatformManager';
-            case 98: return 'ManagementManager';
-            case 97: return 'RelationshipManager';
-            case 96: return 'Assistant';
-            default: return 'Other';
-        }
-    }
-
     function createEmployeeCard(employee, level) {
         const group = new Konva.Group({
             draggable: false
         });
 
-        const role = employee.Role;
-        const isVacant = !employee.Occupant?.Name;
-        const cardColor = isVacant ? config.card.isVacant.fill : config.card.fill[role] || config.card.fill.Diff;
-        let infoButton = null;
-        let infoText = null;
+        const isVacant = employee.Role === "Empty" || !employee.Name;
+        const cardColor = isVacant ? config.card.isVacant.fill : config.card.fill[employee.Role] || config.card.fill.Diff;
 
         const rect = new Konva.Rect({
             width: config.nodeWidth,
             height: config.nodeHeight,
             fill: cardColor,
-            stroke: employee.IsHub ? config.isHub.strokeColor : '#ecf0f1',
-            strokeWidth: employee.IsHub ? config.isHub.strokeWidth : 2,
+            stroke: '#ecf0f1',
+            strokeWidth: 2,
             cornerRadius: 4,
             shadowColor: 'black',
             shadowBlur: 5,
@@ -364,10 +445,8 @@
             name: 'card-rect'
         });
 
-        const displayName = employee.Occupant?.Name || (isVacant ? config.card.isVacant.text : '');
-
         const text = new Konva.Text({
-            text: isVacant ? config.card.isVacant.text : `${displayName}\n${role}`,
+            text: isVacant ? config.card.isVacant.text : `${employee.Name}\n${employee.Role}`,
             fontSize: 12,
             fontStyle: isVacant ? 'normal' : 'bold',
             width: config.nodeWidth,
@@ -378,30 +457,31 @@
             fill: config.card.textColor
         });
 
+        const infoButton = new Konva.Rect({
+            x: config.nodeWidth / 2,
+            y: 0,
+            width: config.nodeWidth / 2,
+            height: config.nodeHeight,
+            fill: 'rgba(52, 152, 219, 0.5)',
+            visible: false,
+            name: 'info-button'
+        });
+
+        const infoText = new Konva.Text({
+            text: 'i',
+            fontSize: 20,
+            fill: 'white',
+            x: config.nodeWidth * 0.75 - 5,
+            y: config.nodeHeight / 2 - 10,
+            visible: false,
+            name: 'info-text'
+        });
+
+
         group.add(rect);
         group.add(text);
 
         if (!isVacant) {
-            infoButton = new Konva.Rect({
-                x: config.nodeWidth / 2,
-                y: 0,
-                width: config.nodeWidth / 2,
-                height: config.nodeHeight,
-                fill: config.card.infoButton.fill,
-                visible: false,
-                name: config.card.infoButton.name
-            });
-
-            infoText = new Konva.Text({
-                text: config.card.infoButton.infoText.text,
-                fontSize: config.card.infoButton.infoText.fontSize,
-                fill: config.card.infoButton.infoText.fill,
-                x: config.nodeWidth * 0.75 - 5,
-                y: config.nodeHeight / 2 - 10,
-                visible: false,
-                name: config.card.infoButton.infoText.name
-            });
-
             group.add(infoButton);
             group.add(infoText);
 
@@ -413,39 +493,30 @@
             });
         } else {
             group.on('click', () => {
-                openFillPositionWindow(employee.PositionCode, employee.Role, employee.Function.ParentID, employee.Junction);
+                openFillPositionWindow();
             });
         }
 
-        if (employee.IsHub) {
+        if (employee.Hub) {
             rect.stroke(config.isHub.strokeColor);
             group.setAttr('isHub', true);
         }
 
-        const hoverGroup = config.card.line.hover.width;
-        const unhoverGroup = config.card.line.unhover.width;
-        const shadowBlurHover = config.card.line.hover.shadowBlur;
-        const shadowBlurUnhover = config.card.line.unhover.shadowBlur;
-
         group.on('mouseenter', () => {
             stage.container().style.cursor = 'pointer';
-            rect.shadowBlur(shadowBlurHover);
-            rect.strokeWidth(hoverGroup);
-            if (!isVacant) {
-                infoButton.visible(true);
-                infoText.visible(true);
-            }
+            rect.shadowBlur(10);
+            rect.strokeWidth(3);
+            infoButton.visible(true);
+            infoText.visible(true);
             layer.batchDraw();
         });
 
         group.on('mouseleave', () => {
             stage.container().style.cursor = 'move';
-            rect.shadowBlur(shadowBlurUnhover);
-            rect.strokeWidth(unhoverGroup);
-            if (!isVacant) {
-                infoButton.visible(false);
-                infoText.visible(false);
-            }
+            rect.shadowBlur(5);
+            rect.strokeWidth(2);
+            infoButton.visible(false);
+            infoText.visible(false);
             layer.batchDraw();
         });
 
@@ -453,7 +524,7 @@
     }
 
     function openEmployeeModal(employee) {
-        alert(`(Modal) InformaÃ§Ãµes sobre ${employee.Name || 'Carteira Vazia'}:\nRole: ${employee.Role}`);
+        alert(`(Modal) Informações sobre ${employee.Name || 'Carteira Vazia'}:\nRole: ${employee.Role}`);
     }
 
     function drawConnections(parentNode, childNodes) {
@@ -468,15 +539,13 @@
 
             const isParentHub = parentNode.getAttr('isHub') === true;
             const isChildHub = child.getAttr('isHub') === true;
-            const bothAreHubs = isParentHub && isChildHub;
 
-            const lineColor = bothAreHubs ? config.isHub.strokeColor : config.lineColor;
-            const lineWidth = bothAreHubs ? config.isHub.strokeWidth : config.lineWidth;
+            const lineColor = (isParentHub && isChildHub) ? config.isHub.strokeColor : config.lineColor;
 
             const line = new Konva.Line({
                 points: [parentX, parentY, childX, childY],
                 stroke: lineColor,
-                strokeWidth: lineWidth,
+                strokeWidth: config.lineWidth,
                 lineCap: 'round'
             });
 
@@ -484,11 +553,10 @@
         });
     }
 
-    function addGG(parentNode) {
+    function addGG() {
         orgData.Subordinates.push({
-            Role: parentNode.Function.Nome,
-            Hub: false,
-            ParentID: parentNode.Function.ID,
+            Name: "",
+            Role: "Empty",
             Subordinates: []
         });
         renderTree();
@@ -496,13 +564,16 @@
 
     function addGR(parentNode) {
         const newGR = {
-            Role: parentNode.Function.Nome,
-            IsHub: parentNode.IsHub,
-            HubName: parentNode.HubName,
-            ParentID: parentNode.Function.ID,
+            Name: "",
+            Role: "Empty",
             Subordinates: []
         };
+
         parentNode.Subordinates.push(newGR);
+
+        if (parentNode.Hub) {
+            newGR.Hub = true;
+        }
 
         renderTree();
     }
@@ -510,11 +581,14 @@
     function addAS(parentNode) {
         if (parentNode.Subordinates.length === 0) {
             const newAS = {
-                Role: parentNode.Function.Nome,
-                Hub: parentNode.IsHub,
-                HubName: parentNode.HubName,
-                ParentID: parentNode.Function.ID
+                Name: "",
+                Role: "Empty",
+                Subordinates: []
             };
+
+            if (parentNode.Hub) {
+                newAS.Hub = true;
+            }
 
             parentNode.Subordinates.push(newAS);
 
@@ -553,7 +627,7 @@
         const nodeGroup = createEmployeeCard(node, level);
         nodeGroup.position({ x, y: adjustedY });
 
-        if (getRoleFromPositionCode(node.PositionCode) === "ManagementManager" && node.Hub) {
+        if (node.Role === "ManagementManager" && node.Hub) {
             const hubText = new Konva.Text({
                 text: node.HubName,
                 fontSize: 22,
@@ -596,10 +670,10 @@
                 adjustedY,
                 config.nodeWidth,
                 config.nodeHeight,
-                () => addGG(node),
-                'left'
+                () => addGG(),
+                'bottom'
             );
-        } else if (level === 1 && getRoleFromPositionCode(node.PositionCode) === "ManagementManager") {
+        } else if (level === 1 && node.Role === "ManagementManager") {
             createAddButton(
                 layer,
                 x,
@@ -609,8 +683,7 @@
                 () => addGR(node),
                 'left'
             );
-        } else if (level === 2 && (!node.Subordinates || node.Subordinates.length === 0) &&
-            getRoleFromPositionCode(node.PositionCode) === "RelationshipManager") {
+        } else if (level === 2 && (!node.Subordinates || node.Subordinates.length === 0) && node.Role === "RelationshipManager") {
             createAddButton(
                 layer,
                 x,
@@ -651,15 +724,13 @@
 
             const isParentHub = parentCard.getAttr('isHub') === true;
             const isChildHub = child.getAttr('isHub') === true;
-            const bothAreHubs = isParentHub && isChildHub;
 
-            const lineColor = bothAreHubs ? config.isHub.strokeColor : config.lineColor;
-            const lineWidth = bothAreHubs ? config.isHub.strokeWidth : config.lineWidth;
+            const lineColor = (isParentHub && isChildHub) ? config.isHub.strokeColor : config.lineColor;
 
             const line = new Konva.Line({
                 points: [parentX, parentY, childX, childY],
                 stroke: lineColor,
-                strokeWidth: lineWidth,
+                strokeWidth: config.lineWidth,
                 lineCap: 'round',
                 lineJoin: 'round'
             });
@@ -682,7 +753,7 @@
         card.position({ x: adjustedX, y: adjustedY });
         layer.add(card);
 
-        if (getRoleFromPositionCode(node.PositionCode) === "ManagementManager" && node.Hub) {
+        if (node.Role === "ManagementManager" && node.Hub) {
             const cardPos = card.getAbsolutePosition();
 
             const hubText = new Konva.Text({
@@ -735,39 +806,17 @@
 
         if (level === 0 && node.Function?.ParentID === 0) {
             createAddButton(layer, adjustedX, adjustedY, config.nodeWidth, config.nodeHeight,
-                () => addGG(), 'bottom');
+                () => addGG(), 'right');
         }
-        else if (level === 1 && getRoleFromPositionCode(node.PositionCode) === "ManagementManager") {
+        else if (level === 1 && node.Role === "ManagementManager") {
             createAddButton(layer, adjustedX, adjustedY, config.nodeWidth, config.nodeHeight,
-                () => addGR(node), 'bottom');
+                () => addGR(node), 'right');
         }
-        else if (level === 2 && (!node.Subordinates || node.Subordinates.length === 0) &&
-            getRoleFromPositionCode(node.PositionCode) === "RelationshipManager") {
+        else if (level === 2 && node.Role === "RelationshipManager" &&
+            (!node.Subordinates || node.Subordinates.length === 0)) {
             createAddButton(layer, adjustedX, adjustedY, config.nodeWidth, config.nodeHeight,
                 () => addAS(node), 'right');
         }
-    }
-
-    function renderTree() {
-        layer.destroyChildren();
-        occupiedPositions.clear();
-
-        const stageWidth = stage.width();
-        const stageHeight = stage.height();
-
-        const startX = stageWidth / 2;
-        const startY = stageHeight / 2;
-
-        if (config.orientation === 'horizontal') {
-            drawTree(orgData, startX, startY);
-        } else if (config.orientation === 'vertical') {
-            drawTreeHorizontal(orgData, null, 0, startX, startY);
-        }
-
-        centerContent();
-
-        layer.batchDraw();
-        window.konvaInitialized = true;
     }
 
     function centerContent() {
@@ -836,24 +885,33 @@
         stage.batchDraw();
     }
 
-    function toggleFullscreen() {
-        const el = document.getElementById('container');
-        if (!document.fullscreenElement) {
-            el.requestFullscreen().then(updateStageSize);
-        } else {
-            document.exitFullscreen().then(updateStageSize);
-        }
-    }
-
-    function toggleOrientation() {
-        config.orientation = config.orientation === 'horizontal' ? 'vertical' : 'horizontal';
-        renderTree();
-    }
-
     function updateStageSize() {
         stage.width(container.clientWidth);
         stage.height(container.clientHeight);
         renderTree();
+    }
+
+    function renderTree() {
+        layer.destroyChildren();
+        occupiedPositions.clear();
+
+        const stageWidth = stage.width();
+        const stageHeight = stage.height();
+
+        const startX = stageWidth / 2;
+        const startY = stageHeight / 2;
+
+        if (config.orientation === 'horizontal') {
+            drawTree(orgData, startX, startY);
+        } else if (config.orientation === 'vertical') {
+            drawTreeHorizontal(orgData, null, 0, startX, startY);
+        }
+
+        centerContent();
+        stage.container().style.cursor = 'move';
+
+        layer.batchDraw();
+        window.konvaInitialized = true;
     }
 
     stage.on('wheel', (e) => {
@@ -862,9 +920,47 @@
     });
 
     window.addEventListener('resize', updateStageSize);
+    if (window.konvaStage) {
+        window.konvaStage.destroy();
+    }
 
-    window.onload = () => {
-        renderTree();
-        stage.container().style.cursor = 'move';
+    renderTree();
+};
+
+window.toggleFullscreen = function () {
+    const el = document.getElementById('container');
+    if (!document.fullscreenElement) {
+        el.requestFullscreen().then(updateStageSize);
+    } else {
+        document.exitFullscreen().then(updateStageSize);
+    }
+};
+
+window.toggleOrientation = function () {
+    config.orientation = config.orientation === 'horizontal' ? 'vertical' : 'horizontal';
+    renderTree();
+};
+
+window.zoom = function (factor) {
+    const oldScale = stage.scaleX();
+    const newScale = oldScale * factor;
+    const pointer = stage.getPointerPosition();
+
+    if (!pointer) {
+        stage.scale({ x: newScale, y: newScale });
+        stage.batchDraw();
+        return;
+    }
+
+    const mousePointTo = {
+        x: (pointer.x - stage.x()) / oldScale,
+        y: (pointer.y - stage.y()) / oldScale,
     };
-</script>
+
+    stage.scale({ x: newScale, y: newScale });
+    stage.position({
+        x: pointer.x - mousePointTo.x * newScale,
+        y: pointer.y - mousePointTo.y * newScale,
+    });
+    stage.batchDraw();
+};

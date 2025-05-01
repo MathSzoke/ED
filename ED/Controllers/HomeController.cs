@@ -9,9 +9,8 @@ namespace ED.Controllers
 {
     public class HomeController : Controller
     {
-        public ActionResult Index(string viewType = "grid")
+        public ActionResult Index()
         {
-            ViewBag.ActiveView = viewType;
             return View();
         }
     }

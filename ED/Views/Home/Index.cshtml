@@ -2,6 +2,11 @@
     ViewBag.Title = "Home Page";
 }
 <style>
+    #grid-view, #canvas-view {
+        height: 100%;
+        width: 100%;
+    }
+
     #view-toggle-buttons {
         position: absolute;
         top: 10px;
@@ -29,7 +34,7 @@
         }
     .view-container {
         position: relative;
-        min-height: 80vh;
+        height: 90vh;
     }
     .hidden-view {
         position: absolute;
@@ -37,6 +42,7 @@
         pointer-events: none;
         width: 100%;
         height: 100%;
+        display: none;
     }
 </style>
 
