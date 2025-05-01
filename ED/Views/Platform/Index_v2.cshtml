@@ -36,6 +36,28 @@
             margin-top: 10px;
             display: ruby;
         }
+
+    #add-employee-window {
+        position: absolute;
+        bottom: 50%;
+        left: 50%;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+        display: none;
+        width: 400px;
+        height: fit-content;
+        z-index: 100;
+        text-align: center;
+    }
+
+        #add-employee-window select,
+        #add-employee-window input {
+            width: 100%;
+            margin-top: 10px;
+            display: ruby;
+        }
 </style>
 
 <div id="container" style="position: relative; width: 100%; height: 100%;">
@@ -52,14 +74,22 @@
     // Configurações globais
     const config = {
         orientation: 'vertical',
-        nodeWidth: 180,
-        nodeHeight: 70,
+        nodeWidth: 200,
+        nodeHeight: 200,
         minHorizontalSpacing: 50,
         verticalSpacing: 100,
         card: {
+            cornerRadius: 4,
+            shadow: {
+                blur: 5,
+                opacity: 0.2
+            },
             isVacant: {
                 fill: '#e04f60',
-                text: "Clique aqui para preencher a posição",
+                text: {
+                    content: "Clique aqui para preencher a posição",
+                    fontStyle: 'normal'
+                },
             },
             fill: {
                 'PlatformManager': '#cc092f',
@@ -68,7 +98,13 @@
                 'Assistant': '#e03c50',
                 'Diff': '#e04f60'
             },
-            textColor: '#fff',
+            text: {
+                color: '#fff',
+                fontSize: 12,
+                align: 'center',
+                verticalAlign: 'middle',
+                fontStyle: 'bold'
+            },
             infoButton: {
                 fill: 'rgba(52, 152, 219, 0.5)',
                 name: 'info-button',
@@ -90,12 +126,26 @@
                     color: '',
                     shadowBlur: 5,
                 },
+            },
+            stroke: {
+                color: '#ecf0f1',
+                width: 2
             }
         },
         lineColor: '#7f8c8d',
         isHub: {
-            strokeColor: '#2ecc71',
-            strokeWidth: 3
+            stroke: {
+                color: '#2ecc71',
+                width: 3
+            },
+            text: {
+                align: 'left',
+                color: '#2ecc71',
+                fontSize: 14,
+                fontStyle: 'bold',
+                padding: 5,
+                fontFamily: 'Calibri'
+            }
         },
         addButton: {
             size: 20,
@@ -245,39 +295,111 @@
 
         buttonGroup.on('click', (e) => {
             e.cancelBubble = true;
-            openAddEmployeeModal(onClick);
+            const parentNode = parentGroup.findOne('.card-rect').getParent().employeeData;
+            openAddEmployeeWindow(
+                parentNode.Function.ParentID,
+                parentNode.PositionCode,
+                parentNode.Junction
+            );
         });
 
         layer.add(buttonGroup);
         return buttonGroup;
     }
 
-    function openAddEmployeeModal(onConfirm) {
-        if (confirm("Deseja adicionar um novo funcionário?")) {
-            onConfirm();
-        }
+    function openAddEmployeeWindow(parentId, positionCode, junction) {
+        $('#add-employee-window').remove();
+
+        const addWindow = $(`
+            <div id="add-employee-window">
+                <h5>Adicionar uma nova posição</h5>
+                <label for="positionSelect" class="noSelect">Selecione uma função:</label>
+                <select class="form-select position-select" id="positionSelect">
+                    <option value="">-- Selecione --</option>
+                </select>
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-success confirm-button" disabled>
+                        <i class="bi bi-check"></i> Confirmar
+                    </button>
+                    <button type="button" class="btn btn-danger cancel-button">
+                        <i class="bi bi-x"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        `);
+
+        $('#container').append(addWindow);
+        $('#add-employee-window').toggle();
+
+        const $addWindow = $('#add-employee-window');
+        const $positionSelect = $addWindow.find('.position-select');
+        const $confirmButton = $addWindow.find('.confirm-button');
+        const $cancelButton = $addWindow.find('.cancel-button');
+
+        $.get('/Employee/AvailableFunctions', { parentId: parentId, junction: junction }, function (functions) {
+            functions.forEach(f => {
+                $positionSelect.append(`<option value="${f.Id}">${f.Nome}</option>`);
+            });
+        });
+
+        const validateForm = () => {
+            const isPositionSelected = $positionSelect.val() !== "";
+            $confirmButton.prop('disabled', !isPositionSelected);
+        };
+
+        $positionSelect.on('change', validateForm);
+
+        $cancelButton.on('click', function () {
+            $addWindow.remove();
+        });
+
+        $confirmButton.on('click', function () {
+            const positionCode = $positionSelect.val();
+
+            $.post('/api/positions/add', {
+                parentId: parentId,
+                positionCode: positionCode,
+                junction: junction
+            }, function (response) {
+                if (response.success) {
+                    alert('Funcionário adicionado com sucesso!');
+                    renderTree();
+                } else {
+                    alert('Erro ao adicionar funcionário: ' + response.message);
+                }
+                $addWindow.remove();
+            });
+        });
+
+        $addWindow.draggable({
+            containment: '#container',
+            scroll: false,
+            snap: true,
+            snapMode: 'inner',
+            snapTolerance: 20
+        });
     }
 
     function openFillPositionWindow(positionCode, roleName, parentId, junction) {
         $('#fill-position-window').remove();
 
         const fillWindow = $(`
-        <div id="fill-position-window">
-            <h5>Preencher posição de ${roleName}</h5>
-            <label for="candidateSelect" class="noSelect">Selecione um candidato:</label>
-            <select class="form-select candidate-select" id="candidateSelect">
-                <option value="">-- Selecione --</option>
-            </select>
-            <div class="d-flex justify-content-between mt-3">
-                <button type="button" class="btn btn-success confirm-button" disabled>
-                    <i class="bi bi-check"></i> Confirmar
-                </button>
-                <button type="button" class="btn btn-danger cancel-button">
-                    <i class="bi bi-x"></i> Cancelar
-                </button>
+            <div id="fill-position-window">
+                <h5>Preencher posição de ${roleName}</h5>
+                <label for="candidateSelect" class="noSelect">Selecione um candidato:</label>
+                <select class="form-select candidate-select" id="candidateSelect">
+                    <option value="">-- Selecione --</option>
+                </select>
+                <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-success confirm-button" disabled>
+                        <i class="bi bi-check"></i> Confirmar
+                    </button>
+                    <button type="button" class="btn btn-danger cancel-button">
+                        <i class="bi bi-x"></i> Cancelar
+                    </button>
+                </div>
             </div>
-        </div>
-    `);
+        `);
 
         $('#container').append(fillWindow);
         $('#fill-position-window').toggle();
@@ -344,6 +466,8 @@
             draggable: false
         });
 
+        group.employeeData = employee;
+
         const role = employee.Role;
         const isVacant = !employee.Occupant?.Name;
         const cardColor = isVacant ? config.card.isVacant.fill : config.card.fill[role] || config.card.fill.Diff;
@@ -354,32 +478,52 @@
             width: config.nodeWidth,
             height: config.nodeHeight,
             fill: cardColor,
-            stroke: employee.IsHub ? config.isHub.strokeColor : '#ecf0f1',
-            strokeWidth: employee.IsHub ? config.isHub.strokeWidth : 2,
-            cornerRadius: 4,
+            stroke: employee.IsHub ? config.isHub.stroke.color : config.card.stroke.color,
+            strokeWidth: employee.IsHub ? config.isHub.stroke.width : config.card.stroke.width,
+            cornerRadius: config.card.cornerRadius,
             shadowColor: 'black',
-            shadowBlur: 5,
-            shadowOpacity: 0.2,
+            shadowBlur: config.card.shadow.blur,
+            shadowOpacity: config.card.shadow.opacity,
             perfectDrawEnabled: false,
             name: 'card-rect'
         });
 
-        const displayName = employee.Occupant?.Name || (isVacant ? config.card.isVacant.text : '');
+        const displayName = employee.Occupant?.Name || (isVacant ? config.card.isVacant.text.content : '');
 
         const text = new Konva.Text({
-            text: isVacant ? config.card.isVacant.text : `${displayName}\n${role}`,
-            fontSize: 12,
-            fontStyle: isVacant ? 'normal' : 'bold',
+            text: isVacant ? config.card.isVacant.text.content : `${displayName}\n${role}`,
+            fontSize: config.card.text.fontSize,
+            fontStyle: isVacant ? config.card.isVacant.text.fontStyle : config.card.text.fontStyle,
             width: config.nodeWidth,
             height: config.nodeHeight,
-            align: 'center',
-            verticalAlign: 'middle',
+            align: config.card.text.align,
+            verticalAlign: config.card.text.verticalAlign,
             padding: 8,
-            fill: config.card.textColor
+            fill: config.card.text.color
         });
 
         group.add(rect);
         group.add(text);
+
+        if (employee.IsHub && employee.HubName) {
+            const hubText = new Konva.Text({
+                text: employee.HubName,
+                fontSize: config.isHub.text.fontSize,
+                fontFamily: config.isHub.text.fontFamily,
+                fill: config.isHub.text.color,
+                align: config.isHub.text.align,
+                width: config.nodeWidth - 10,
+                padding: config.isHub.text.padding,
+                fontStyle: config.isHub.text.fontStyle
+            });
+
+            hubText.position({
+                x: 5,
+                y: 5
+            });
+
+            group.add(hubText);
+        }
 
         if (!isVacant) {
             infoButton = new Konva.Rect({
@@ -418,7 +562,7 @@
         }
 
         if (employee.IsHub) {
-            rect.stroke(config.isHub.strokeColor);
+            rect.stroke(config.isHub.stroke.color);
             group.setAttr('isHub', true);
         }
 
@@ -470,8 +614,8 @@
             const isChildHub = child.getAttr('isHub') === true;
             const bothAreHubs = isParentHub && isChildHub;
 
-            const lineColor = bothAreHubs ? config.isHub.strokeColor : config.lineColor;
-            const lineWidth = bothAreHubs ? config.isHub.strokeWidth : config.lineWidth;
+            const lineColor = bothAreHubs ? config.isHub.stroke.color : config.lineColor;
+            const lineWidth = bothAreHubs ? config.isHub.stroke.width : config.lineWidth;
 
             const line = new Konva.Line({
                 points: [parentX, parentY, childX, childY],
@@ -552,24 +696,6 @@
 
         const nodeGroup = createEmployeeCard(node, level);
         nodeGroup.position({ x, y: adjustedY });
-
-        if (getRoleFromPositionCode(node.PositionCode) === "ManagementManager" && node.Hub) {
-            const hubText = new Konva.Text({
-                text: node.HubName,
-                fontSize: 22,
-                fontFamily: 'Calibri',
-                fill: config.isHub.strokeColor,
-                width: 200,
-                align: 'left',
-            });
-
-            hubText.position({
-                x: config.nodeWidth + 10,
-                y: (config.nodeHeight - hubText.height()) / 2
-            });
-
-            nodeGroup.add(hubText);
-        }
 
         nodeGroup.employee = () => node;
 
@@ -653,8 +779,8 @@
             const isChildHub = child.getAttr('isHub') === true;
             const bothAreHubs = isParentHub && isChildHub;
 
-            const lineColor = bothAreHubs ? config.isHub.strokeColor : config.lineColor;
-            const lineWidth = bothAreHubs ? config.isHub.strokeWidth : config.lineWidth;
+            const lineColor = bothAreHubs ? config.isHub.stroke.color : config.lineColor;
+            const lineWidth = bothAreHubs ? config.isHub.stroke.width : config.lineWidth;
 
             const line = new Konva.Line({
                 points: [parentX, parentY, childX, childY],
@@ -682,26 +808,6 @@
         card.position({ x: adjustedX, y: adjustedY });
         layer.add(card);
 
-        if (getRoleFromPositionCode(node.PositionCode) === "ManagementManager" && node.Hub) {
-            const cardPos = card.getAbsolutePosition();
-
-            const hubText = new Konva.Text({
-                text: node.HubName,
-                fontSize: 22,
-                fontFamily: 'Calibri',
-                fill: config.isHub.strokeColor,
-                align: 'center',
-                width: config.nodeWidth
-            });
-
-            hubText.position({
-                x: 0,
-                y: -50
-            });
-
-            card.add(hubText);
-        }
-
         if (parent && parent.card) {
             drawConnectionsHorizontal(parent.card, [card]);
         }
@@ -717,7 +823,7 @@
             childrenHeights.push(h);
             totalChildHeight += h;
         }
-        totalChildHeight += (children.length - 1.7) * config.verticalSpacing;
+        totalChildHeight += (children.length - 3) * config.verticalSpacing;
 
         let childY = adjustedY - totalChildHeight / 2;
 

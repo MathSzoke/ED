@@ -91,7 +91,7 @@ namespace ED.Controllers
 
             // Construir o organograma
             var organograma = BuildOrganograma(hierarchies, positions, functions, employees);
-            return PartialView("Index_v2", organograma);
+            return PartialView(organograma);
         }
 
         private object BuildOrganograma(List<Hierarquia> hierarchies, List<Posicao> positions, List<Funcao> functions, List<Funcionario> employees)
