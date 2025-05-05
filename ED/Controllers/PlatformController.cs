@@ -8,12 +8,12 @@ namespace ED.Controllers
 {
     public class PlatformController : Controller
     {
-        public ActionResult Index()
+        public ActionResult Index(int platformId)
         {
             return PartialView();
         }
 
-        public ActionResult Index_v2()
+        public ActionResult Index_v2(int platformId)
         {
             // 1. Dados de Hierarquia (todas as posições existem, algumas podem estar vazias)
             var hierarchies = new List<Hierarquia>
@@ -21,7 +21,7 @@ namespace ED.Controllers
                 new Hierarquia { Juncao = 1519, PosicaoGestao = 981519001, PosicaoRelac = 971519001, PosicaoAssist = 961519001 },
                 new Hierarquia { Juncao = 1519, PosicaoGestao = 981519002, PosicaoRelac = 971519002, PosicaoAssist = 961519002 },
                 new Hierarquia { Juncao = 1519, PosicaoGestao = 981519003, PosicaoRelac = 971519003, PosicaoAssist = 961519003 }
-            };
+            }.Where(h => h.Juncao == platformId).ToList();
 
             // 2. Todas as posições existentes (incluindo não hierárquicas)
             var positions = new List<Posicao>
@@ -48,7 +48,7 @@ namespace ED.Controllers
                 new Posicao { CodigoPosicao = 901519001, Juncao = 1519, CodigoFuncao = 5, Hub = false }, // Desenvolvedor
                 new Posicao { CodigoPosicao = 901519002, Juncao = 1519, CodigoFuncao = 6, Hub = false }, // Analista
                 new Posicao { CodigoPosicao = 901519003, Juncao = 1519, CodigoFuncao = 7, Hub = false }  // Agente de Projetos
-            };
+            }.Where(p => p.Juncao == platformId).ToList();
 
             // 3. Definição de TODAS as funções
             var functions = new List<Funcao>
@@ -256,6 +256,23 @@ namespace ED.Controllers
             }
 
             return organograma;
+        }
+
+        public ActionResult LoadPlatformButtons()
+        {
+            var platformData = new List<Platform>
+            {
+                new Platform { UnityCode = 1519, Name = "Unity one", UnityType = "DP" },
+                new Platform { UnityCode = 4160, Name = "Syscode", UnityType = "DP" },
+                new Platform { UnityCode = 9561, Name = "Unity second", UnityType = "DP" },
+                new Platform { UnityCode = 5620, Name = "Unity third", UnityType = "DP" },
+                new Platform { UnityCode = 2145, Name = "Unity fourth", UnityType = "DP" },
+                new Platform { UnityCode = 3221, Name = "Unity fiveth", UnityType = "DP" },
+                new Platform { UnityCode = 3256, Name = "Unity sixth", UnityType = "DP" },
+                new Platform { UnityCode = 2231, Name = "Unity seventh", UnityType = "DP" },
+            };
+
+            return PartialView("_PlatformButtons", platformData);
         }
     }
 }

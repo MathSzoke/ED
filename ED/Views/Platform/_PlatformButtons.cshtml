@@ -1,0 +1,13 @@
+﻿@model IEnumerable<ED.Models.Platform>
+
+@foreach (var platform in Model)
+{
+    <div class="platform-item">
+        <button class="platform-button"
+                data-platform-id="@platform.UnityCode"
+                onclick="loadPlatform(@platform.UnityCode)">
+            @platform.UnityCode - @platform.Name
+        </button>
+        <div class="platform-content" id="platform-content-@platform.UnityCode"></div>
+    </div>
+}

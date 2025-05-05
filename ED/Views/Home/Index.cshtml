@@ -2,14 +2,64 @@
     ViewBag.Title = "Home Page";
 }
 <style>
-    #grid-view, #canvas-view {
-        height: 100%;
-        width: 100%;
+    .main-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
     }
 
+    .platforms-container {
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        overflow-x: auto;
+    }
+
+    .platform-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .platform-item {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .platform-button {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 8px;
+        background-color: #e9ecef;
+        color: #212529;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: left;
+    }
+
+        .platform-button:hover {
+            background-color: #dee2e6;
+        }
+
+        .platform-button.active {
+            background-color: #007bff;
+            color: white;
+        }
+
+    .platform-content {
+        margin-top: 5px;
+        display: none;
+        height: calc(100vh - 150px);
+    }
+
+        .platform-content.active {
+            display: block;
+        }
+
     #view-toggle-buttons {
-        position: absolute;
-        top: 10px;
+        position: fixed;
+        top: 70px;
         right: 10px;
         z-index: 2000;
         display: flex;
@@ -32,75 +82,110 @@
             color: white;
             border-color: #007bff;
         }
-    .view-container {
-        position: relative;
-        height: 90vh;
-    }
-    .hidden-view {
+
+    .loading-overlay {
         position: absolute;
-        opacity: 0;
-        pointer-events: none;
-        width: 100%;
-        height: 100%;
-        display: none;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
     }
 </style>
 
-<div id="view-toggle-buttons">
-    <button class="btn btn-view-toggle active" id="gridViewBtn" onclick="loadView('grid')">
-        <i class="bi bi-grid"></i>
-    </button>
-    <button class="btn btn-view-toggle" id="canvasViewBtn" onclick="loadView('canvas')">
-        <i class="bi bi-diagram-3"></i>
-    </button>
-</div>
+<div class="main-container">
+    <div id="view-toggle-buttons">
+        <button class="btn btn-view-toggle" id="gridViewBtn" onclick="switchView('grid')">
+            <i class="bi bi-grid"></i>
+        </button>
+        <button class="btn btn-view-toggle" id="canvasViewBtn" onclick="switchView('canvas')">
+            <i class="bi bi-diagram-3"></i>
+        </button>
+    </div>
 
-<div class="view-container">
-    <div id="grid-view"></div>
-    <div id="canvas-view" class="hidden-view"></div>
+    <div class="platforms-container">
+        <div class="platform-buttons" id="platforms-buttons-container">
+            @Html.Action("LoadPlatformButtons", "Platform")
+        </div>
+    </div>
 </div>
 
 <script>
-    function loadView(viewType) {
-        document.querySelectorAll('.btn-view-toggle').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.getElementById(viewType + 'ViewBtn').classList.add('active');
-
-        if (viewType === 'grid') {
-            $('#canvas-view').addClass('hidden-view');
-            $('#grid-view').removeClass('hidden-view');
-
-            if (!$('#grid-view').html()) {
-                $('#grid-view').load('@Url.Action("Index", "Platform")');
-            }
-        } else {
-            $('#grid-view').addClass('hidden-view');
-            $('#canvas-view').removeClass('hidden-view');
-
-            if (!$('#canvas-view').html()) {
-                $('#canvas-view').load('@Url.Action("Index_v2", "Platform")', function() {
-                    setTimeout(initializeCanvas, 100);
-                });
-            } else {
-                initializeCanvas();
-            }
-        }
-    }
-
-    function initializeCanvas() {
-        if (window.konvaStage) {
-            window.konvaStage.destroy();
-        }
-
-        if (document.getElementById('tree-container')) {
-            renderTree();
-        } else {
-            console.error('Canvas container not found!');
-        }
-    }
+    let currentView = 'grid';
+    let currentOpenPlatform = null;
 
     $(document).ready(function() {
-        loadView('grid');
+        switchView(currentView);
     });
+
+    function switchView(viewType) {
+        currentView = viewType;
+
+        $('.btn-view-toggle').removeClass('active');
+        $(`#${viewType}ViewBtn`).addClass('active');
+
+        if (currentOpenPlatform) {
+            loadPlatform(currentOpenPlatform);
+        }
+    }
+
+    function loadPlatform(platformId) {
+        if (currentOpenPlatform === platformId) {
+            closePlatform(platformId);
+            currentOpenPlatform = null;
+            $('.platform-button').removeClass('active');
+            return;
+        }
+
+        if (currentOpenPlatform) {
+            closePlatform(currentOpenPlatform);
+        }
+
+        currentOpenPlatform = platformId;
+
+        $('.platform-button').removeClass('active');
+        $(`.platform-button[data-platform-id="${platformId}"]`).addClass('active');
+
+        const contentDiv = $(`#platform-content-${platformId}`);
+        contentDiv.html('<div class="loading-overlay"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando...</span></div></div>');
+        contentDiv.addClass('active');
+
+        if (currentView === 'grid') {
+            loadGridView(platformId, contentDiv);
+        } else {
+            loadCanvasView(platformId, contentDiv);
+        }
+    }
+
+    function closePlatform(platformId) {
+        const contentDiv = $(`#platform-content-${platformId}`);
+        contentDiv.removeClass('active');
+        contentDiv.empty();
+
+        if (window.konvaStage) {
+            window.konvaStage.destroy();
+            window.konvaStage = null;
+        }
+    }
+
+    function loadGridView(platformId, contentDiv) {
+        contentDiv.load('@Url.Action("Index", "Platform")' + `?platformId=${platformId}`, function() {
+            contentDiv.find('.loading-overlay').remove();
+        });
+    }
+
+    function loadCanvasView(platformId, contentDiv) {
+        if (window.konvaStage) {
+            window.konvaStage.destroy();
+            window.konvaStage = null;
+        }
+
+        contentDiv.load('@Url.Action("Index_v2", "Platform")' + `?platformId=${platformId}`, function() {
+            contentDiv.find('.loading-overlay').remove();
+        });
+    }
 </script>

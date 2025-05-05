@@ -1,6 +1,7 @@
 ﻿@model dynamic
 
 <style>
+    /* Seus estilos CSS permanecem os mesmos */
     #tree-container {
         width: 100%;
         height: 100%;
@@ -16,7 +17,7 @@
         flex-direction: column;
     }
 
-    #fill-position-window {
+    #fill-position-window, #add-employee-window {
         position: absolute;
         bottom: 50%;
         left: 50%;
@@ -31,27 +32,7 @@
         text-align: center;
     }
 
-        #fill-position-window select {
-            width: 100%;
-            margin-top: 10px;
-            display: ruby;
-        }
-
-    #add-employee-window {
-        position: absolute;
-        bottom: 50%;
-        left: 50%;
-        background: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
-        display: none;
-        width: 400px;
-        height: fit-content;
-        z-index: 100;
-        text-align: center;
-    }
-
+        #fill-position-window select,
         #add-employee-window select,
         #add-employee-window input {
             width: 100%;
@@ -63,16 +44,24 @@
 <div id="container" style="position: relative; width: 100%; height: 100%;">
     <div id="tree-container"></div>
     <div id="button-container">
-        <button type="button" title="Zoom In" class="btn" onclick="zoom(1.1)"><i class="bi bi-zoom-in"></i></button>
-        <button type="button" title="Zoom Out" class="btn" onclick="zoom(0.9)"><i class="bi bi-zoom-out"></i></button>
-        <button type="button" title="Fullscreen" class="btn" onclick="toggleFullscreen()"><i class="bi bi-fullscreen"></i></button>
-        <button type="button" title="Girar" class="btn" onclick="toggleOrientation()"><i class="bi bi-arrow-clockwise"></i></button>
+        <button type="button" title="Zoom In" class="btn" onclick="window.PlatformCanvas.zoom(1.1)"><i class="bi bi-zoom-in"></i></button>
+        <button type="button" title="Zoom Out" class="btn" onclick="window.PlatformCanvas.zoom(0.9)"><i class="bi bi-zoom-out"></i></button>
+        <button type="button" title="Fullscreen" class="btn" onclick="window.PlatformCanvas.toggleFullscreen()"><i class="bi bi-fullscreen"></i></button>
+        <button type="button" title="Girar" class="btn" onclick="window.PlatformCanvas.toggleOrientation()"><i class="bi bi-arrow-clockwise"></i></button>
     </div>
 </div>
 
 <script>
-    // Configurações globais
-    const config = {
+    // Namespace global para o canvas
+    window.PlatformCanvas = window.PlatformCanvas || {};
+
+    // Limpeza do canvas anterior
+    if (window.PlatformCanvas.stage) {
+        window.PlatformCanvas.stage.destroy();
+    }
+
+    // Configurações dentro do namespace
+    window.PlatformCanvas.config = {
         orientation: 'vertical',
         nodeWidth: 200,
         nodeHeight: 200,
@@ -165,116 +154,103 @@
         }
     };
 
-    const orgData = @Html.Raw(Json.Encode(Model));
+    window.PlatformCanvas.orgData = @Html.Raw(Json.Encode(Model));
 
-    const container = document.getElementById('tree-container');
-    const stage = new Konva.Stage({
+    // Inicialização do canvas
+    window.PlatformCanvas.container = document.getElementById('tree-container');
+    window.PlatformCanvas.stage = new Konva.Stage({
         container: 'tree-container',
-        width: container.clientWidth,
-        height: container.clientHeight,
+        width: window.PlatformCanvas.container.clientWidth,
+        height: window.PlatformCanvas.container.clientHeight,
         draggable: true
     });
 
-    const layer = new Konva.Layer();
-    stage.add(layer);
+    window.PlatformCanvas.layer = new Konva.Layer();
+    window.PlatformCanvas.stage.add(window.PlatformCanvas.layer);
 
-    const occupiedPositions = new Map();
+    window.PlatformCanvas.occupiedPositions = new Map();
 
-    function checkCollision(x, y, level) {
+    // Todas as funções dentro do namespace
+    window.PlatformCanvas.checkCollision = function(x, y, level) {
         const key = `${level}-${x.toFixed(0)}`;
-        if (occupiedPositions.has(key)) {
-            const existingY = occupiedPositions.get(key);
-            if (Math.abs(existingY - y) < config.nodeHeight + 20) {
+        if (window.PlatformCanvas.occupiedPositions.has(key)) {
+            const existingY = window.PlatformCanvas.occupiedPositions.get(key);
+            if (Math.abs(existingY - y) < window.PlatformCanvas.config.nodeHeight + 20) {
                 return true;
             }
         }
-        occupiedPositions.set(key, y);
+        window.PlatformCanvas.occupiedPositions.set(key, y);
         return false;
-    }
+    };
 
-    function checkCollisionHorizontal(x, y, level) {
+    window.PlatformCanvas.checkCollisionHorizontal = function(x, y, level) {
         const key = `${level}-${y.toFixed(0)}`;
-        if (occupiedPositions.has(key)) {
-            const existingX = occupiedPositions.get(key);
-            if (Math.abs(existingX - x) < config.nodeWidth + 20) {
+        if (window.PlatformCanvas.occupiedPositions.has(key)) {
+            const existingX = window.PlatformCanvas.occupiedPositions.get(key);
+            if (Math.abs(existingX - x) < window.PlatformCanvas.config.nodeWidth + 20) {
                 return true;
             }
         }
-        occupiedPositions.set(key, x);
+        window.PlatformCanvas.occupiedPositions.set(key, x);
         return false;
-    }
+    };
 
-    function createAddButton(parentGroup, parentX, parentY, parentWidth, parentHeight, onClick, position = 'bottom') {
-        const buttonGroup = new Konva.Group({ draggable: false, name: 'add-employee-button' });
+    window.PlatformCanvas.generateUniqueId = function() {
+        return Math.random().toString(36).substr(2, 9);
+    };
+
+    window.PlatformCanvas.createAddButton = function(parentGroup, parentX, parentY, parentWidth, parentHeight, onClick, position = 'bottom', cardData) {
+        const buttonId = window.PlatformCanvas.generateUniqueId();
+        const buttonGroup = new Konva.Group({ draggable: false, name: `add-employee-button-${buttonId}` });
 
         let buttonX, buttonY, linePoints;
 
         switch (position) {
             case 'left':
-                buttonX = parentX - config.addButton.size - 30;
+                buttonX = parentX - window.PlatformCanvas.config.addButton.size - 30;
                 buttonY = parentY + parentHeight / 2;
-
-                linePoints = [
-                    parentX, buttonY,
-                    buttonX + config.addButton.size - 10, buttonY
-                ];
+                linePoints = [parentX, buttonY, buttonX + window.PlatformCanvas.config.addButton.size - 10, buttonY];
                 break;
-
             case 'right':
-                buttonX = parentX + parentWidth + config.addButton.size + 30;
+                buttonX = parentX + parentWidth + window.PlatformCanvas.config.addButton.size + 30;
                 buttonY = parentY + parentHeight / 2;
-
-                linePoints = [
-                    parentX + parentWidth, buttonY,
-                    buttonX - config.addButton.size + 10, buttonY
-                ];
+                linePoints = [parentX + parentWidth, buttonY, buttonX - window.PlatformCanvas.config.addButton.size + 10, buttonY];
                 break;
-
             case 'top':
                 buttonX = parentX + parentWidth / 2;
-                buttonY = parentY - config.addButton.lineLength;
-
-                linePoints = [
-                    buttonX, parentY,
-                    buttonX, buttonY + config.addButton.size / 2
-                ];
+                buttonY = parentY - window.PlatformCanvas.config.addButton.lineLength;
+                linePoints = [buttonX, parentY, buttonX, buttonY + window.PlatformCanvas.config.addButton.size / 2];
                 break;
-
-            default: // bottom (default)
+            default: // bottom
                 buttonX = parentX + parentWidth / 2;
-                buttonY = parentY + parentHeight + config.addButton.lineLength;
-
-                linePoints = [
-                    buttonX, parentY + parentHeight,
-                    buttonX, buttonY - config.addButton.size / 2
-                ];
+                buttonY = parentY + parentHeight + window.PlatformCanvas.config.addButton.lineLength;
+                linePoints = [buttonX, parentY + parentHeight, buttonX, buttonY - window.PlatformCanvas.config.addButton.size / 2];
         }
 
         const line = new Konva.Line({
             points: linePoints,
-            stroke: config.lineColor,
-            strokeWidth: config.lineWidth,
+            stroke: window.PlatformCanvas.config.lineColor,
+            strokeWidth: window.PlatformCanvas.config.lineWidth,
             lineCap: 'round'
         });
 
         const circle = new Konva.Circle({
             x: buttonX,
             y: buttonY,
-            radius: config.addButton.size / 2,
-            fill: config.addButton.backGround.natural,
-            stroke: config.addButton.strokeColor,
+            radius: window.PlatformCanvas.config.addButton.size / 2,
+            fill: window.PlatformCanvas.config.addButton.backGround.natural,
+            stroke: window.PlatformCanvas.config.addButton.strokeColor,
             strokeWidth: 1,
-
         });
 
         const plusIcon = new Konva.Text({
             x: buttonX - 9,
             y: buttonY - 10,
-            text: config.addButton.icon.text,
-            fontFamily: config.addButton.icon.fontFamily,
-            fontSize: config.addButton.icon.fontSize,
-            fill: config.addButton.icon.fill,
-            align: config.addButton.icon.align
+            text: window.PlatformCanvas.config.addButton.icon.text,
+            fontFamily: window.PlatformCanvas.config.addButton.icon.fontFamily,
+            fontSize: window.PlatformCanvas.config.addButton.icon.fontSize,
+            fill: window.PlatformCanvas.config.addButton.icon.fill,
+            align: window.PlatformCanvas.config.addButton.icon.align
         });
 
         buttonGroup.add(line);
@@ -282,41 +258,55 @@
         buttonGroup.add(plusIcon);
 
         buttonGroup.on('mouseenter', () => {
-            stage.container().style.cursor = 'pointer';
-            circle.fill(config.addButton.backGround.hover);
-            layer.batchDraw();
+            window.PlatformCanvas.stage.container().style.cursor = 'pointer';
+            circle.fill(window.PlatformCanvas.config.addButton.backGround.hover);
+            window.PlatformCanvas.layer.batchDraw();
         });
 
         buttonGroup.on('mouseleave', () => {
-            stage.container().style.cursor = 'move';
-            circle.fill(config.addButton.color);
-            layer.batchDraw();
+            window.PlatformCanvas.stage.container().style.cursor = 'move';
+            circle.fill(window.PlatformCanvas.config.addButton.color);
+            window.PlatformCanvas.layer.batchDraw();
         });
 
         buttonGroup.on('click', (e) => {
             e.cancelBubble = true;
-            const parentNode = parentGroup.findOne('.card-rect').getParent().employeeData;
-            openAddEmployeeWindow(
+            const parentNode = cardData.employeeData;
+            window.PlatformCanvas.openAddEmployeeWindow(
                 parentNode.Function.ParentID,
                 parentNode.PositionCode,
                 parentNode.Junction
             );
         });
 
-        layer.add(buttonGroup);
+        window.PlatformCanvas.layer.add(buttonGroup);
         return buttonGroup;
-    }
+    };
 
-    function openAddEmployeeWindow(parentId, positionCode, junction) {
+    window.PlatformCanvas.openAddEmployeeWindow = function(parentId, positionCode, junction) {
         $('#add-employee-window').remove();
 
         const addWindow = $(`
             <div id="add-employee-window">
                 <h5>Adicionar uma nova posição</h5>
-                <label for="positionSelect" class="noSelect">Selecione uma função:</label>
-                <select class="form-select position-select" id="positionSelect">
-                    <option value="">-- Selecione --</option>
-                </select>
+                <div class="mt-3 mb-3">
+                    <label for="positionSelect" class="noSelect">Selecione uma função:</label>
+                    <select class="form-select position-select" id="positionSelect">
+                        <option value="">Selecione a função</option>
+                    </select>
+                </div>
+                <div class="mt-3 mb-3">
+                    <div class="mt-3 mb-3">
+                        <label class="noSelect" for="reasonToCreate">Digite o motivo de criar a posição:</label>
+                        <textarea class="form-control" id="reasonToCreate" rows="3"></textarea>
+                    </div>
+                    <div class="mt-3 mb-3">
+                        <label for="positionStatus" class="noSelect">Selecione o status da posição:</label>
+                        <select class="form-select" id="positionStatus">
+                            <option value="">Selecione o status</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="d-flex justify-content-between mt-3">
                     <button type="button" class="btn btn-success confirm-button" disabled>
                         <i class="bi bi-check"></i> Confirmar
@@ -332,40 +322,41 @@
         $('#add-employee-window').toggle();
 
         const $addWindow = $('#add-employee-window');
-        const $positionSelect = $addWindow.find('.position-select');
+        const $functionSelect = $addWindow.find('.function-select');
         const $confirmButton = $addWindow.find('.confirm-button');
         const $cancelButton = $addWindow.find('.cancel-button');
+        const $textareaReason = $addWindow.find('#reasonToCreate');
+        const $positionStatus = $addWindow.find('#positionStatus');
 
         $.get('/Employee/AvailableFunctions', { parentId: parentId, junction: junction }, function (functions) {
             functions.forEach(f => {
-                $positionSelect.append(`<option value="${f.Id}">${f.Nome}</option>`);
+                $functionSelect.append(`<option value="${f.Id}">${f.Nome}</option>`);
             });
         });
 
         const validateForm = () => {
-            const isPositionSelected = $positionSelect.val() !== "";
+            const isPositionSelected = $functionSelect.val() !== "";
             $confirmButton.prop('disabled', !isPositionSelected);
         };
 
-        $positionSelect.on('change', validateForm);
+        $functionSelect.on('change', validateForm);
 
         $cancelButton.on('click', function () {
             $addWindow.remove();
         });
 
         $confirmButton.on('click', function () {
-            const positionCode = $positionSelect.val();
+            const positionCode = $functionSelect.val();
 
-            $.post('/api/positions/add', {
+            $.post('/Positions/Add', {
                 parentId: parentId,
                 positionCode: positionCode,
-                junction: junction
+                junction: junction,
+                reasonToCreate: $textareaReason,
+                positionStatus: $positionStatus
             }, function (response) {
                 if (response.success) {
-                    alert('Funcionário adicionado com sucesso!');
                     renderTree();
-                } else {
-                    alert('Erro ao adicionar funcionário: ' + response.message);
                 }
                 $addWindow.remove();
             });
@@ -380,7 +371,7 @@
         });
     }
 
-    function openFillPositionWindow(positionCode, roleName, parentId, junction) {
+    window.PlatformCanvas.openFillPositionWindow = function(positionCode, roleName, parentId, junction) {
         $('#fill-position-window').remove();
 
         const fillWindow = $(`
@@ -449,8 +440,8 @@
         });
     }
 
-    function getRoleFromPositionCode(positionCode) {
-        const codePrefix = Math.floor(positionCode / 10000000);
+    window.PlatformCanvas.getRoleFromPositionCode = function(positionCode) {
+        const codePrefix = Math.floor(positionCode / 100000000); // Codigo inicial de 2 digitos da posição + Juncao (4 digitos) + 3 digitos de auto-increment
 
         switch (codePrefix) {
             case 99: return 'PlatformManager';
@@ -461,7 +452,7 @@
         }
     }
 
-    function createEmployeeCard(employee, level) {
+    window.PlatformCanvas.createEmployeeCard = function(employee) {
         const group = new Konva.Group({
             draggable: false
         });
@@ -470,36 +461,36 @@
 
         const role = employee.Role;
         const isVacant = !employee.Occupant?.Name;
-        const cardColor = isVacant ? config.card.isVacant.fill : config.card.fill[role] || config.card.fill.Diff;
+        const cardColor = isVacant ?window.PlatformCanvas.config.card.isVacant.fill :window.PlatformCanvas.config.card.fill[role] ||window.PlatformCanvas.config.card.fill.Diff;
         let infoButton = null;
         let infoText = null;
 
         const rect = new Konva.Rect({
-            width: config.nodeWidth,
-            height: config.nodeHeight,
+            width:window.PlatformCanvas.config.nodeWidth,
+            height:window.PlatformCanvas.config.nodeHeight,
             fill: cardColor,
-            stroke: employee.IsHub ? config.isHub.stroke.color : config.card.stroke.color,
-            strokeWidth: employee.IsHub ? config.isHub.stroke.width : config.card.stroke.width,
-            cornerRadius: config.card.cornerRadius,
+            stroke: employee.IsHub ?window.PlatformCanvas.config.isHub.stroke.color :window.PlatformCanvas.config.card.stroke.color,
+            strokeWidth: employee.IsHub ?window.PlatformCanvas.config.isHub.stroke.width :window.PlatformCanvas.config.card.stroke.width,
+            cornerRadius:window.PlatformCanvas.config.card.cornerRadius,
             shadowColor: 'black',
-            shadowBlur: config.card.shadow.blur,
-            shadowOpacity: config.card.shadow.opacity,
+            shadowBlur:window.PlatformCanvas.config.card.shadow.blur,
+            shadowOpacity:window.PlatformCanvas.config.card.shadow.opacity,
             perfectDrawEnabled: false,
             name: 'card-rect'
         });
 
-        const displayName = employee.Occupant?.Name || (isVacant ? config.card.isVacant.text.content : '');
+        const displayName = employee.Occupant?.Name || (isVacant ?window.PlatformCanvas.config.card.isVacant.text.content : '');
 
         const text = new Konva.Text({
-            text: isVacant ? config.card.isVacant.text.content : `${displayName}\n${role}`,
-            fontSize: config.card.text.fontSize,
-            fontStyle: isVacant ? config.card.isVacant.text.fontStyle : config.card.text.fontStyle,
-            width: config.nodeWidth,
-            height: config.nodeHeight,
-            align: config.card.text.align,
-            verticalAlign: config.card.text.verticalAlign,
+            text: isVacant ?window.PlatformCanvas.config.card.isVacant.text.content : `${displayName}\n${role}`,
+            fontSize:window.PlatformCanvas.config.card.text.fontSize,
+            fontStyle: isVacant ?window.PlatformCanvas.config.card.isVacant.text.fontStyle :window.PlatformCanvas.config.card.text.fontStyle,
+            width:window.PlatformCanvas.config.nodeWidth,
+            height:window.PlatformCanvas.config.nodeHeight,
+            align:window.PlatformCanvas.config.card.text.align,
+            verticalAlign:window.PlatformCanvas.config.card.text.verticalAlign,
             padding: 8,
-            fill: config.card.text.color
+            fill:window.PlatformCanvas.config.card.text.color
         });
 
         group.add(rect);
@@ -508,13 +499,13 @@
         if (employee.IsHub && employee.HubName) {
             const hubText = new Konva.Text({
                 text: employee.HubName,
-                fontSize: config.isHub.text.fontSize,
-                fontFamily: config.isHub.text.fontFamily,
-                fill: config.isHub.text.color,
-                align: config.isHub.text.align,
-                width: config.nodeWidth - 10,
-                padding: config.isHub.text.padding,
-                fontStyle: config.isHub.text.fontStyle
+                fontSize:window.PlatformCanvas.config.isHub.text.fontSize,
+                fontFamily:window.PlatformCanvas.config.isHub.text.fontFamily,
+                fill:window.PlatformCanvas.config.isHub.text.color,
+                align:window.PlatformCanvas.config.isHub.text.align,
+                width:window.PlatformCanvas.config.nodeWidth - 10,
+                padding:window.PlatformCanvas.config.isHub.text.padding,
+                fontStyle:window.PlatformCanvas.config.isHub.text.fontStyle
             });
 
             hubText.position({
@@ -527,95 +518,95 @@
 
         if (!isVacant) {
             infoButton = new Konva.Rect({
-                x: config.nodeWidth / 2,
+                x: window.PlatformCanvas.config.nodeWidth / 2,
                 y: 0,
-                width: config.nodeWidth / 2,
-                height: config.nodeHeight,
-                fill: config.card.infoButton.fill,
+                width: window.PlatformCanvas.config.nodeWidth / 2,
+                height: window.PlatformCanvas.config.nodeHeight,
+                fill: window.PlatformCanvas.config.card.infoButton.fill,
                 visible: false,
-                name: config.card.infoButton.name
+                name: window.PlatformCanvas.config.card.infoButton.name
             });
 
             infoText = new Konva.Text({
-                text: config.card.infoButton.infoText.text,
-                fontSize: config.card.infoButton.infoText.fontSize,
-                fill: config.card.infoButton.infoText.fill,
-                x: config.nodeWidth * 0.75 - 5,
-                y: config.nodeHeight / 2 - 10,
+                text: window.PlatformCanvas.config.card.infoButton.infoText.text,
+                fontSize: window.PlatformCanvas.config.card.infoButton.infoText.fontSize,
+                fill: window.PlatformCanvas.config.card.infoButton.infoText.fill,
+                x: window.PlatformCanvas.config.nodeWidth * 0.75 - 5,
+                y: window.PlatformCanvas.config.nodeHeight / 2 - 10,
                 visible: false,
-                name: config.card.infoButton.infoText.name
+                name: window.PlatformCanvas.config.card.infoButton.infoText.name
             });
 
             group.add(infoButton);
             group.add(infoText);
 
             infoButton.on('click', () => {
-                openEmployeeModal(employee);
+                window.PlatformCanvas.openEmployeeModal(employee);
             });
             infoText.on('click', () => {
-                openEmployeeModal(employee);
+                window.PlatformCanvas.openEmployeeModal(employee);
             });
         } else {
             group.on('click', () => {
-                openFillPositionWindow(employee.PositionCode, employee.Role, employee.Function.ParentID, employee.Junction);
+                window.PlatformCanvas.openFillPositionWindow(employee.PositionCode, employee.Role, employee.Function.ParentID, employee.Junction);
             });
         }
 
         if (employee.IsHub) {
-            rect.stroke(config.isHub.stroke.color);
+            rect.stroke(window.PlatformCanvas.config.isHub.stroke.color);
             group.setAttr('isHub', true);
         }
 
-        const hoverGroup = config.card.line.hover.width;
-        const unhoverGroup = config.card.line.unhover.width;
-        const shadowBlurHover = config.card.line.hover.shadowBlur;
-        const shadowBlurUnhover = config.card.line.unhover.shadowBlur;
+        const hoverGroup = window.PlatformCanvas.config.card.line.hover.width;
+        const unhoverGroup = window.PlatformCanvas.config.card.line.unhover.width;
+        const shadowBlurHover = window.PlatformCanvas.config.card.line.hover.shadowBlur;
+        const shadowBlurUnhover = window.PlatformCanvas.config.card.line.unhover.shadowBlur;
 
         group.on('mouseenter', () => {
-            stage.container().style.cursor = 'pointer';
+           window.PlatformCanvas.stage.container().style.cursor = 'pointer';
             rect.shadowBlur(shadowBlurHover);
             rect.strokeWidth(hoverGroup);
             if (!isVacant) {
                 infoButton.visible(true);
                 infoText.visible(true);
             }
-            layer.batchDraw();
+           window.PlatformCanvas.layer.batchDraw();
         });
 
         group.on('mouseleave', () => {
-            stage.container().style.cursor = 'move';
+           window.PlatformCanvas.stage.container().style.cursor = 'move';
             rect.shadowBlur(shadowBlurUnhover);
             rect.strokeWidth(unhoverGroup);
             if (!isVacant) {
                 infoButton.visible(false);
                 infoText.visible(false);
             }
-            layer.batchDraw();
+           window.PlatformCanvas.layer.batchDraw();
         });
 
         return group;
     }
 
-    function openEmployeeModal(employee) {
+    window.PlatformCanvas.openEmployeeModal = function(employee) {
         alert(`(Modal) Informações sobre ${employee.Name || 'Carteira Vazia'}:\nRole: ${employee.Role}`);
     }
 
-    function drawConnections(parentNode, childNodes) {
+    window.PlatformCanvas.drawConnections = function (parentNode, childNodes) {
         if (!childNodes || childNodes.length === 0) return;
 
-        const parentX = parentNode.x() + config.nodeWidth / 2;
-        const parentY = parentNode.y() + config.nodeHeight;
+        const parentX = parentNode.x() + window.PlatformCanvas.config.nodeWidth / 2;
+        const parentY = parentNode.y() + window.PlatformCanvas.config.nodeHeight;
 
         childNodes.forEach(child => {
-            const childX = child.x() + config.nodeWidth / 2;
+            const childX = child.x() + window.PlatformCanvas.config.nodeWidth / 2;
             const childY = child.y();
 
             const isParentHub = parentNode.getAttr('isHub') === true;
             const isChildHub = child.getAttr('isHub') === true;
             const bothAreHubs = isParentHub && isChildHub;
 
-            const lineColor = bothAreHubs ? config.isHub.stroke.color : config.lineColor;
-            const lineWidth = bothAreHubs ? config.isHub.stroke.width : config.lineWidth;
+            const lineColor = bothAreHubs ? window.PlatformCanvas.config.isHub.stroke.color : window.PlatformCanvas.config.lineColor;
+            const lineWidth = bothAreHubs ? window.PlatformCanvas.config.isHub.stroke.width : window.PlatformCanvas.config.lineWidth;
 
             const line = new Konva.Line({
                 points: [parentX, parentY, childX, childY],
@@ -624,21 +615,21 @@
                 lineCap: 'round'
             });
 
-            layer.add(line);
+           window.PlatformCanvas.layer.add(line);
         });
     }
 
-    function addGG(parentNode) {
+    window.PlatformCanvas.addGG = function(parentNode) {
         orgData.Subordinates.push({
             Role: parentNode.Function.Nome,
             Hub: false,
             ParentID: parentNode.Function.ID,
             Subordinates: []
         });
-        renderTree();
+        window.PlatformCanvas.renderTree();
     }
 
-    function addGR(parentNode) {
+    window.PlatformCanvas.addGR = function(parentNode) {
         const newGR = {
             Role: parentNode.Function.Nome,
             IsHub: parentNode.IsHub,
@@ -648,10 +639,10 @@
         };
         parentNode.Subordinates.push(newGR);
 
-        renderTree();
+        window.PlatformCanvas.renderTree();
     }
 
-    function addAS(parentNode) {
+    window.PlatformCanvas.addAS = function(parentNode) {
         if (parentNode.Subordinates.length === 0) {
             const newAS = {
                 Role: parentNode.Function.Nome,
@@ -662,125 +653,128 @@
 
             parentNode.Subordinates.push(newAS);
 
-            renderTree();
+            window.PlatformCanvas.renderTree();
         }
     }
 
-    function calculateSubtreeWidth(node, level) {
+    window.PlatformCanvas.calculateSubtreeWidth = function(node, level) {
         if (!node.Subordinates || node.Subordinates.length === 0) {
-            return config.nodeWidth;
+            return window.PlatformCanvas.config.nodeWidth;
         }
 
         let totalWidth = 0;
         node.Subordinates.forEach(child => {
-            totalWidth += calculateSubtreeWidth(child, level + 1) + config.minHorizontalSpacing;
+            totalWidth += window.PlatformCanvas.calculateSubtreeWidth(child, level + 1) +window.PlatformCanvas.config.minHorizontalSpacing;
         });
 
         if (level === 0 || (level === 1 && node.Subordinates.length < 5)) {
-            totalWidth += config.minHorizontalSpacing;
+            totalWidth += window.PlatformCanvas.config.minHorizontalSpacing;
         }
 
-        return totalWidth - config.minHorizontalSpacing;
+        return totalWidth - window.PlatformCanvas.config.minHorizontalSpacing;
     }
 
-    function drawTree(node, startX, y, level = 0) {
-        const subtreeWidth = calculateSubtreeWidth(node, level);
-        const x = startX + (subtreeWidth - config.nodeWidth) / 2;
+    window.PlatformCanvas.drawTree = function(node, startX, y, level = 0) {
+        const subtreeWidth = window.PlatformCanvas.calculateSubtreeWidth(node, level);
+        const x = startX + (subtreeWidth - window.PlatformCanvas.config.nodeWidth) / 2;
 
         let adjustedY = y;
         let attempts = 0;
         while (checkCollision(x, adjustedY, level) && attempts < 10) {
-            adjustedY += config.nodeHeight / 2;
+            adjustedY += window.PlatformCanvas.config.nodeHeight / 2;
             attempts++;
         }
 
-        const nodeGroup = createEmployeeCard(node, level);
+        const nodeGroup = createEmployeeCard(node);
         nodeGroup.position({ x, y: adjustedY });
 
         nodeGroup.employee = () => node;
 
-        layer.add(nodeGroup);
+       window.PlatformCanvas.layer.add(nodeGroup);
 
         if (node.Subordinates && node.Subordinates.length > 0) {
             const children = [];
             let currentX = startX;
 
             node.Subordinates.forEach(child => {
-                const childSubtreeWidth = calculateSubtreeWidth(child, level + 1);
-                const childGroup = drawTree(child, currentX, adjustedY + config.nodeHeight + config.verticalSpacing, level + 1);
+                const childSubtreeWidth = window.PlatformCanvas.calculateSubtreeWidth(child, level + 1);
+                const childGroup = window.PlatformCanvas.drawTree(child, currentX, adjustedY +window.PlatformCanvas.config.nodeHeight +window.PlatformCanvas.config.verticalSpacing, level + 1);
                 children.push(childGroup);
-                currentX += childSubtreeWidth + config.minHorizontalSpacing;
+                currentX += childSubtreeWidth +window.PlatformCanvas.config.minHorizontalSpacing;
             });
 
-            drawConnections(nodeGroup, children);
+            window.PlatformCanvas.drawConnections(nodeGroup, children);
         }
 
         if (level === 0 && node.Function.ParentID === 0) {
-            createAddButton(
-                layer,
+            window.PlatformCanvas.createAddButton(
+               window.PlatformCanvas.layer.
                 x,
                 adjustedY,
-                config.nodeWidth,
-                config.nodeHeight,
-                () => addGG(node),
-                'left'
+               window.PlatformCanvas.config.nodeWidth,
+               window.PlatformCanvas.config.nodeHeight,
+                () => window.PlatformCanvas.addGG(node),
+                'left',
+                node
             );
-        } else if (level === 1 && getRoleFromPositionCode(node.PositionCode) === "ManagementManager") {
-            createAddButton(
-                layer,
+        } else if (level === 1 && window.PlatformCanvas.getRoleFromPositionCode(node.PositionCode) === "ManagementManager") {
+            window.PlatformCanvas.createAddButton(
+               window.PlatformCanvas.layer.
                 x,
                 adjustedY,
-                config.nodeWidth,
-                config.nodeHeight,
-                () => addGR(node),
-                'left'
+               window.PlatformCanvas.config.nodeWidth,
+               window.PlatformCanvas.config.nodeHeight,
+                () => window.PlatformCanvas.addGR(node),
+                'left',
+                node
             );
         } else if (level === 2 && (!node.Subordinates || node.Subordinates.length === 0) &&
-            getRoleFromPositionCode(node.PositionCode) === "RelationshipManager") {
-            createAddButton(
-                layer,
+            window.PlatformCanvas.getRoleFromPositionCode(node.PositionCode) === "RelationshipManager") {
+            window.PlatformCanvas.createAddButton(
+               window.PlatformCanvas.layer.
                 x,
                 adjustedY,
-                config.nodeWidth,
-                config.nodeHeight,
-                () => addAS(node),
-                'bottom'
+               window.PlatformCanvas.config.nodeWidth,
+               window.PlatformCanvas.config.nodeHeight,
+                () => window.PlatformCanvas.addAS(node),
+                'bottom',
+                node
             );
         }
 
         return nodeGroup;
     }
 
-    function calculateSubtreeHeight(node) {
+    window.PlatformCanvas.calculateSubtreeHeight = function (node) {
         const children = node.children || node.Subordinates || [];
         if (children.length === 0) {
-            return config.nodeHeight;
+            return window.PlatformCanvas.config.nodeHeight;
         }
 
         let height = 0;
         for (const child of children) {
-            height += calculateSubtreeHeight(child) + config.verticalSpacing;
+            height += window.PlatformCanvas.calculateSubtreeHeight(child) +window.PlatformCanvas.config.verticalSpacing;
         }
 
-        return height - config.verticalSpacing;
+        return height -window.PlatformCanvas.config.verticalSpacing;
     }
 
-    function drawConnectionsHorizontal(parentCard, childCards) {
+    window.PlatformCanvas.drawConnectionsHorizontal = function (parentCard, childCards) {
         if (!childCards || childCards.length === 0) return;
 
-        const parentX = parentCard.x() + config.nodeWidth;
-        const parentY = parentCard.y() + config.nodeHeight / 2;
+        const parentX = parentCard.x() +window.PlatformCanvas.config.nodeWidth;
+        const parentY = parentCard.y() +window.PlatformCanvas.config.nodeHeight / 2;
 
         childCards.forEach(child => {
             const childX = child.x();
-            const childY = child.y() + config.nodeHeight / 2;
+            const childY = child.y() +window.PlatformCanvas.config.nodeHeight / 2;
 
             const isParentHub = parentCard.getAttr('isHub') === true;
             const isChildHub = child.getAttr('isHub') === true;
             const bothAreHubs = isParentHub && isChildHub;
 
-            const lineColor = bothAreHubs ? config.isHub.stroke.color : config.lineColor;
-            const lineWidth = bothAreHubs ? config.isHub.stroke.width : config.lineWidth;
+            const lineColor = bothAreHubs ?window.PlatformCanvas.config.isHub.stroke.color :window.PlatformCanvas.config.lineColor;
+            const lineWidth = bothAreHubs ?window.PlatformCanvas.config.isHub.stroke.width :window.PlatformCanvas.config.lineWidth;
 
             const line = new Konva.Line({
                 points: [parentX, parentY, childX, childY],
@@ -790,102 +784,103 @@
                 lineJoin: 'round'
             });
 
-            layer.add(line);
+           window.PlatformCanvas.layer.add(line);
         });
     }
 
-    function drawTreeHorizontal(node, parent = null, level = 0, posY = 0, posX = 0) {
+    window.PlatformCanvas.drawTreeHorizontal = function (node, parent = null, level = 0, posY = 0, posX = 0) {
         if (!node) return;
 
-        const card = createEmployeeCard(node, level);
+        const card = window.PlatformCanvas.createEmployeeCard(node);
+
         const adjustedX = posX;
         let adjustedY = posY;
 
-        while (checkCollisionHorizontal(adjustedX, adjustedY, level)) {
-            adjustedY += config.nodeHeight + config.verticalSpacing;
+        while (window.PlatformCanvas.checkCollisionHorizontal(adjustedX, adjustedY, level)) {
+            adjustedY +=window.PlatformCanvas.config.nodeHeight + window.PlatformCanvas.config.verticalSpacing;
         }
 
         card.position({ x: adjustedX, y: adjustedY });
-        layer.add(card);
+        window.PlatformCanvas.layer.add(card);
 
         if (parent && parent.card) {
-            drawConnectionsHorizontal(parent.card, [card]);
+            window.PlatformCanvas.drawConnectionsHorizontal(parent.card, [card]);
         }
 
         const children = node.children || node.Subordinates || [];
-        const spacing = config.nodeWidth * 2;
+        const spacing = window.PlatformCanvas.config.nodeWidth * 2;
 
         let totalChildHeight = 0;
         const childrenHeights = [];
 
         for (const child of children) {
-            const h = calculateSubtreeHeight(child);
+            const h = window.PlatformCanvas.calculateSubtreeHeight(child);
             childrenHeights.push(h);
             totalChildHeight += h;
         }
-        totalChildHeight += (children.length - 3) * config.verticalSpacing;
+        totalChildHeight += (children.length - 3) * window.PlatformCanvas.config.verticalSpacing;
 
         let childY = adjustedY - totalChildHeight / 2;
 
         for (let i = 0; i < children.length; i++) {
             const child = children[i];
-            drawTreeHorizontal(
+            window.PlatformCanvas.drawTreeHorizontal(
                 child,
                 { node, card },
                 level + 1,
                 childY,
                 adjustedX + spacing
             );
-            childY += childrenHeights[i] + config.verticalSpacing;
+            childY += childrenHeights[i] + window.PlatformCanvas.config.verticalSpacing;
         }
 
         if (level === 0 && node.Function?.ParentID === 0) {
-            createAddButton(layer, adjustedX, adjustedY, config.nodeWidth, config.nodeHeight,
-                () => addGG(), 'bottom');
+            window.PlatformCanvas.createAddButton(window.PlatformCanvas.layer, adjustedX, adjustedY, window.PlatformCanvas.config.nodeWidth, window.PlatformCanvas.config.nodeHeight,
+                () => window.PlatformCanvas.addGG(), 'bottom', card);
         }
-        else if (level === 1 && getRoleFromPositionCode(node.PositionCode) === "ManagementManager") {
-            createAddButton(layer, adjustedX, adjustedY, config.nodeWidth, config.nodeHeight,
-                () => addGR(node), 'bottom');
+        else if (level === 1 && window.PlatformCanvas.getRoleFromPositionCode(node.PositionCode) === "ManagementManager") {
+            window.PlatformCanvas.createAddButton(window.PlatformCanvas.layer, adjustedX, adjustedY, window.PlatformCanvas.config.nodeWidth, window.PlatformCanvas.config.nodeHeight,
+                () => window.PlatformCanvas.addGR(node), 'bottom', card);
         }
         else if (level === 2 && (!node.Subordinates || node.Subordinates.length === 0) &&
-            getRoleFromPositionCode(node.PositionCode) === "RelationshipManager") {
-            createAddButton(layer, adjustedX, adjustedY, config.nodeWidth, config.nodeHeight,
-                () => addAS(node), 'right');
+            window.PlatformCanvas.getRoleFromPositionCode(node.PositionCode) === "RelationshipManager") {
+            window.PlatformCanvas.createAddButton(window.PlatformCanvas.layer, adjustedX, adjustedY, window.PlatformCanvas.config.nodeWidth, window.PlatformCanvas.config.nodeHeight,
+                () => window.PlatformCanvas.addAS(node), 'right', card);
         }
     }
 
-    function renderTree() {
-        layer.destroyChildren();
-        occupiedPositions.clear();
+    window.PlatformCanvas.renderTree = function () {
+        window.PlatformCanvas.layer.destroyChildren();
+        window.PlatformCanvas.occupiedPositions.clear();
 
-        const stageWidth = stage.width();
-        const stageHeight = stage.height();
+        const stageWidth = window.PlatformCanvas.stage.width();
+        const stageHeight = window.PlatformCanvas.stage.height();
 
         const startX = stageWidth / 2;
         const startY = stageHeight / 2;
 
-        if (config.orientation === 'horizontal') {
-            drawTree(orgData, startX, startY);
-        } else if (config.orientation === 'vertical') {
-            drawTreeHorizontal(orgData, null, 0, startX, startY);
+        if (window.PlatformCanvas.config.orientation === 'horizontal') {
+            window.PlatformCanvas.drawTree(window.PlatformCanvas.orgData, startX, startY);
+        } else if (window.PlatformCanvas.config.orientation === 'vertical') {
+            window.PlatformCanvas.drawTreeHorizontal(window.PlatformCanvas.orgData, null, 0, startX, startY);
         }
 
-        centerContent();
+        window.PlatformCanvas.centerContent();
 
-        layer.batchDraw();
+        window.PlatformCanvas.layer.batchDraw();
         window.konvaInitialized = true;
     }
 
-    function centerContent() {
-        stage.scale({ x: 1, y: 1 });
-        layer.position({ x: 0, y: 0 });
+    window.PlatformCanvas.centerContent = function () {
+        window.PlatformCanvas.stage.scale({ x: 1, y: 1 });
+        window.PlatformCanvas.layer.position({ x: 0, y: 0 });
 
-        layer.batchDraw();
+        window.PlatformCanvas.layer.batchDraw();
 
-        const contentBounds = layer.getClientRect();
+        const contentBounds = window.PlatformCanvas.layer.getClientRect();
 
-        const stageCenterX = stage.width() / 2;
-        const stageCenterY = stage.height() / 2;
+        const stageCenterX =window.PlatformCanvas.stage.width() / 2;
+        const stageCenterY =window.PlatformCanvas.stage.height() / 2;
 
         const contentCenterX = contentBounds.x + contentBounds.width / 4;
         const contentCenterY = contentBounds.y + contentBounds.height / 4;
@@ -893,84 +888,87 @@
         const offsetX = stageCenterX - contentCenterX;
         const offsetY = stageCenterY - contentCenterY;
 
-        layer.position({
+        window.PlatformCanvas.layer.position({
             x: offsetX,
             y: offsetY
         });
 
-        fitStageToTree();
+        window.PlatformCanvas.fitStageToTree();
 
-        layer.batchDraw();
+        window.PlatformCanvas.layer.batchDraw();
     }
 
-    function fitStageToTree() {
-        const treeBounds = layer.getClientRect();
+    window.PlatformCanvas.fitStageToTree = function () {
+        const treeBounds = window.PlatformCanvas.layer.getClientRect();
         const scale = Math.min(
-            (stage.width() - 100) / treeBounds.width,
-            (stage.height() - 100) / treeBounds.height
+            (window.PlatformCanvas.stage.width() - 100) / treeBounds.width,
+            (window.PlatformCanvas.stage.height() - 100) / treeBounds.height
         );
 
-        stage.scale({ x: scale, y: scale });
-        stage.position({
-            x: (stage.width() - treeBounds.width * scale) / 2 - treeBounds.x * scale,
+        window.PlatformCanvas.stage.scale({ x: scale, y: scale });
+        window.PlatformCanvas.stage.position({
+            x: (window.PlatformCanvas.stage.width() - treeBounds.width * scale) / 2 - treeBounds.x * scale,
             y: 20
         });
-        stage.batchDraw();
+        window.PlatformCanvas.stage.batchDraw();
     }
 
-    function zoom(factor) {
-        const oldScale = stage.scaleX();
+    window.PlatformCanvas.zoom = function (factor) {
+        const oldScale = window.PlatformCanvas.stage.scaleX();
         const newScale = oldScale * factor;
-        const pointer = stage.getPointerPosition();
+        const pointer = window.PlatformCanvas.stage.getPointerPosition();
 
         if (!pointer) {
-            stage.scale({ x: newScale, y: newScale });
-            stage.batchDraw();
+            window.PlatformCanvas.stage.scale({ x: newScale, y: newScale });
+            window.PlatformCanvas.stage.batchDraw();
             return;
         }
 
         const mousePointTo = {
-            x: (pointer.x - stage.x()) / oldScale,
-            y: (pointer.y - stage.y()) / oldScale,
+            x: (pointer.x - window.PlatformCanvas.stage.x()) / oldScale,
+            y: (pointer.y - window.PlatformCanvas.stage.y()) / oldScale,
         };
 
-        stage.scale({ x: newScale, y: newScale });
-        stage.position({
+        window.PlatformCanvas.stage.scale({ x: newScale, y: newScale });
+        window.PlatformCanvas.stage.position({
             x: pointer.x - mousePointTo.x * newScale,
             y: pointer.y - mousePointTo.y * newScale,
         });
-        stage.batchDraw();
+        window.PlatformCanvas.stage.batchDraw();
     }
 
-    function toggleFullscreen() {
+    window.PlatformCanvas.toggleFullscreen = function () {
         const el = document.getElementById('container');
         if (!document.fullscreenElement) {
-            el.requestFullscreen().then(updateStageSize);
+            el.requestFullscreen().then(window.PlatformCanvas.updateStageSize);
         } else {
-            document.exitFullscreen().then(updateStageSize);
+            document.exitFullscreen().then(window.PlatformCanvas.updateStageSize);
         }
     }
 
-    function toggleOrientation() {
-        config.orientation = config.orientation === 'horizontal' ? 'vertical' : 'horizontal';
-        renderTree();
+    window.PlatformCanvas.toggleOrientation = function () {
+       window.PlatformCanvas.config.orientation =window.PlatformCanvas.config.orientation === 'horizontal' ? 'vertical' : 'horizontal';
+       window.PlatformCanvas.renderTree();
     }
 
-    function updateStageSize() {
-        stage.width(container.clientWidth);
-        stage.height(container.clientHeight);
-        renderTree();
+    window.PlatformCanvas.updateStageSize = function () {
+       window.PlatformCanvas.stage.width(container.clientWidth);
+       window.PlatformCanvas.stage.height(container.clientHeight);
+       window.PlatformCanvas.renderTree();
     }
 
-    stage.on('wheel', (e) => {
+    window.PlatformCanvas.initialize = function () {
+        window.PlatformCanvas.renderTree();
+        window.PlatformCanvas.stage.container().style.cursor = 'move';
+        console.log(window.PlatformCanvas);
+    };
+
+    window.PlatformCanvas.stage.on('wheel', (e) => {
         e.evt.preventDefault();
-        zoom(e.evt.deltaY < 0 ? 1.05 : 0.95);
+        window.PlatformCanvas.zoom(e.evt.deltaY < 0 ? 1.05 : 0.95);
     });
 
-    window.addEventListener('resize', updateStageSize);
+    window.addEventListener('resize', window.PlatformCanvas.updateStageSize);
 
-    window.onload = () => {
-        renderTree();
-        stage.container().style.cursor = 'move';
-    };
+    window.onload = window.PlatformCanvas.initialize();
 </script>

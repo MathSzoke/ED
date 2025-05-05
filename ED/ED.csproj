@@ -127,6 +127,7 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Models\Models.cs" />
+    <Compile Include="Models\Platform.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -181,6 +182,7 @@
     <Content Include="Views\Home\Index.cshtml" />
     <Content Include="Views\Platform\Index_v2.cshtml" />
     <Content Include="Views\Platform\Index.cshtml" />
+    <Content Include="Views\Platform\_PlatformButtons.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
