@@ -1,1 +1,351 @@
-﻿<p>test</p>
+﻿@model dynamic
+
+@{
+    // Adicione esta linha no início da view para facilitar o debug
+    var hasPlatformManager = Model != null && Model.HasPlatformManager;
+}
+
+<style>
+    .employee-grid {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .employee-level {
+        margin-left: 20px;
+        border-left: 2px solid #e0e0e0;
+        padding-left: 15px;
+    }
+
+    .employee-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 10px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+        .employee-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+    .employee-header {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        cursor: pointer;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+        .employee-header.active {
+            background-color: #e9f5ff;
+        }
+
+    .employee-arrow {
+        margin-right: 10px;
+        transition: transform 0.3s ease;
+        color: #6c757d;
+    }
+
+    .employee-header.active .employee-arrow {
+        transform: rotate(90deg);
+        color: #007bff;
+    }
+
+    .employee-content {
+        display: none;
+        padding: 15px;
+    }
+
+    .employee-header.active + .employee-content {
+        display: block;
+    }
+
+    .employee-info {
+        display: flex;
+        align-items: center;
+        padding: 8px 0;
+    }
+
+    .employee-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #007bff;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        font-weight: bold;
+    }
+
+    .employee-details {
+        flex: 1;
+    }
+
+    .employee-name {
+        font-weight: 600;
+        color: #212529;
+        margin-bottom: 2px;
+    }
+
+    .employee-role {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .employee-status {
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        border-radius: 12px;
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .status-vacant {
+        background-color: #ffebee;
+        color: #c62828;
+    }
+
+    /* Cores diferentes para cada tipo de função */
+    .role-platform-manager {
+        border-left: 4px solid #cc092f;
+    }
+
+    .role-management-manager {
+        border-left: 4px solid #e03c50;
+    }
+
+    .role-relationship-manager {
+        border-left: 4px solid #4a6baf;
+    }
+
+    .role-assistant {
+        border-left: 4px solid #6c757d;
+    }
+
+    .role-other {
+        border-left: 4px solid #6c757d;
+    }
+</style>
+
+<div class="employee-grid">
+    @if (Model == null || Model.PlatformManager == null)
+    {
+        <div class="alert alert-info">
+            Esta plataforma não tem Gerente de Plataforma definido.
+            <button class="btn btn-sm btn-primary ms-2" onclick="openAddPlatformManagerModal()">
+                Adicionar Gerente
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- Gerente de Plataforma -->
+        <div class="employee-card role-platform-manager">
+            <div class="employee-header" onclick="toggleEmployee('platform-manager')">
+                <span class="employee-arrow">
+                    <i class="bi bi-chevron-right"></i>
+                </span>
+                <div class="employee-info">
+                    <div class="employee-avatar">
+                        @GetInitials(Model.PlatformManager.Employee?.Name ?? "GP")
+                    </div>
+                    <div class="employee-details">
+                        <div class="employee-name">
+                            @(Model.PlatformManager.Employee?.Name ?? "Vaga - Gerente de Plataforma")
+                        </div>
+                        <div class="employee-role">
+                            @Model.PlatformManager.Role
+                            @if (!string.IsNullOrEmpty(Model.PlatformManager.HubName))
+                            {
+                                <span>(@Model.PlatformManager.HubName)</span>
+                            }
+                        </div>
+                    </div>
+                    <span class="employee-status @(Model.PlatformManager.Employee == null ? "status-vacant" : "")">
+                        @(Model.PlatformManager.Employee == null ? "VAGA" : "ATIVO")
+                    </span>
+                </div>
+            </div>
+            <div class="employee-content" id="platform-manager-content">
+                <div class="employee-level">
+                    <!-- Gerentes de Gestão -->
+                    @foreach (var gg in Model.PlatformManager.ManagementManagers)
+                    {
+                        <div class="employee-card role-management-manager">
+                            <div class="employee-header" onclick="toggleEmployee('gg-@gg.Position')">
+                                <span class="employee-arrow">
+                                    <i class="bi @(gg.RelationshipManagers.Count > 0 ? "bi-chevron-right" : "bi-person")"></i>
+                                </span>
+                                <div class="employee-info">
+                                    <div class="employee-avatar">
+                                        @GetInitials(gg.Employee?.Name ?? "GG")
+                                    </div>
+                                    <div class="employee-details">
+                                        <div class="employee-name">
+                                            @(gg.Employee?.Name ?? "Vaga - Gerente de Gestão")
+                                        </div>
+                                        <div class="employee-role">
+                                            @gg.Role
+                                            @if (!string.IsNullOrEmpty(gg.HubName))
+                                            {
+                                                <span>(@gg.HubName)</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <span class="employee-status @(gg.Employee == null ? "status-vacant" : "")">
+                                        @(gg.Employee == null ? "VAGA" : "ATIVO")
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="employee-content" id="gg-@gg.Position-content">
+                                <div class="employee-level">
+                                    <!-- Gerentes de Relacionamento -->
+                                    @foreach (var gr in gg.RelationshipManagers)
+                                    {
+                                        <div class="employee-card role-relationship-manager">
+                                            <div class="employee-header" onclick="toggleEmployee('gr-@gr.Position')">
+                                                <span class="employee-arrow">
+                                                    <i class="bi @(gr.Assistants.Count > 0 ? "bi-chevron-right" : "bi-person")"></i>
+                                                </span>
+                                                <div class="employee-info">
+                                                    <div class="employee-avatar">
+                                                        @GetInitials(gr.Employee?.Name ?? "GR")
+                                                    </div>
+                                                    <div class="employee-details">
+                                                        <div class="employee-name">
+                                                            @(gr.Employee?.Name ?? "Vaga - Gerente de Relacionamento")
+                                                        </div>
+                                                        <div class="employee-role">
+                                                            @gr.Role
+                                                            @if (!string.IsNullOrEmpty(gr.HubName))
+                                                            {
+                                                                <span>(@gr.HubName)</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    <span class="employee-status @(gr.Employee == null ? "status-vacant" : "")">
+                                                        @(gr.Employee == null ? "VAGA" : "ATIVO")
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="employee-content" id="gr-@gr.Position-content">
+                                                <div class="employee-level">
+                                                    <!-- Assistente -->
+                                                    @foreach (var a in gr.Assistants)
+                                                    {
+                                                        <div class="employee-card role-assistant">
+                                                            <div class="employee-header">
+                                                                <span class="employee-arrow">
+                                                                    <i class="bi bi-person"></i>
+                                                                </span>
+                                                                <div class="employee-info">
+                                                                    <div class="employee-avatar">
+                                                                        @GetInitials(a.Employee?.Name ?? "AS")
+                                                                    </div>
+                                                                    <div class="employee-details">
+                                                                        <div class="employee-name">
+                                                                            @(a.Employee?.Name ?? "Vaga - Assistente")
+                                                                        </div>
+                                                                        <div class="employee-role">
+                                                                            @a.Role
+                                                                            @if (!string.IsNullOrEmpty(a.HubName))
+                                                                            {
+                                                                                <span>(@a.HubName)</span>
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+                                                                    <span class="employee-status @(a.Employee == null ? "status-vacant" : "")">
+                                                                        @(a.Employee == null ? "VAGA" : "ATIVO")
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Outras Funções -->
+                    @foreach (var of in Model.PlatformManager.OtherFunctions)
+                    {
+                        <div class="employee-card role-other">
+                            <div class="employee-header">
+                                <span class="employee-arrow">
+                                    <i class="bi bi-person"></i>
+                                </span>
+                                <div class="employee-info">
+                                    <div class="employee-avatar">
+                                        @GetInitials(of.Employee?.Name ?? "OF")
+                                    </div>
+                                    <div class="employee-details">
+                                        <div class="employee-name">
+                                            @(of.Employee?.Name ?? $"Vaga - {of.Role}")
+                                        </div>
+                                        <div class="employee-role">
+                                            @of.Role
+                                            @if (!string.IsNullOrEmpty(of.HubName))
+                                            {
+                                                <span>(@of.HubName)</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <span class="employee-status @(of.Employee == null ? "status-vacant" : "")">
+                                        @(of.Employee == null ? "VAGA" : "ATIVO")
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<script>
+    function toggleEmployee(id) {
+        const header = $(`#${id}-content`).prev();
+        const content = $(`#${id}-content`);
+
+        header.toggleClass('active');
+        content.slideToggle();
+    }
+
+    function openAddPlatformManagerModal() {
+        // Implemente a abertura do modal para adicionar GP
+        alert("Abrir modal para adicionar Gerente de Plataforma");
+    }
+
+    function GetInitials(name) {
+        if (!name) return "";
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    }
+
+    $(document).ready(function () {
+        $(".employee-header").first().addClass('active');
+        $(".employee-content").first().show();
+    });
+</script>
+
+@functions {
+    public string GetInitials(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return "GP";
+        var parts = name.Split(' ');
+        return (parts.Length >= 2)
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpper()
+            : name.Length >= 2
+                ? name.Substring(0, 2).ToUpper()
+                : name.ToUpper();
+    }
+}

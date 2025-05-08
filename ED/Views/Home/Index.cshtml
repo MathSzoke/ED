@@ -175,6 +175,11 @@
     function loadGridView(platformId, contentDiv) {
         contentDiv.load('@Url.Action("Index", "Platform")' + `?platformId=${platformId}`, function() {
             contentDiv.find('.loading-overlay').remove();
+
+            $(document).ready(function() {
+                $(".employee-header").first().addClass('active');
+                $(".employee-content").first().show();
+            });
         });
     }
 
@@ -187,5 +192,9 @@
         contentDiv.load('@Url.Action("Index_v2", "Platform")' + `?platformId=${platformId}`, function() {
             contentDiv.find('.loading-overlay').remove();
         });
+    }
+
+    function loadModal(element) {
+        return;
     }
 </script>
