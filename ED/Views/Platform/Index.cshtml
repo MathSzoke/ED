@@ -4,6 +4,7 @@
 <style>
     .organograma-grid-container {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        padding: 20px;
         border-radius: 8px;
         margin-top: 20px;
         background-color: #ffffff;
@@ -98,14 +99,15 @@
 </style>
 
 <div class="organograma-grid-container">
+    <h3>Organograma da Plataforma</h3>
     <table id="organogramaTable">
         <thead>
             <tr>
-                <th style="width: 20px;" class="p-0"></th>
+                <th style="width: 40px;"></th>
                 <th>Função/Cargo</th>
                 <th>Ocupante (Cód. Funcional)</th>
                 <th>Status</th>
-                <th>Ocupa posição desde</th>
+                <th>Desde</th>
                 <th>Hub</th>
                 <th style="width: 120px;">Ações</th>
             </tr>
@@ -123,7 +125,7 @@
         tableBody.empty();
 
         var initialLevel = 0;
-        var indentationStep = 20;
+        var indentationStep = 40;
 
         if (organogramaData && organogramaData.PositionCode) {
             tableBody.append(generateRowHtml(organogramaData, initialLevel, null, indentationStep));
@@ -168,6 +170,31 @@
         });
     });
 
+    function formatDateString(dateString) {
+        if (!dateString || dateString === '-') {
+            return '-';
+        }
+        try {
+
+            if (dateString.includes('T')) {
+                dateString = dateString.split('T')[0];
+                var parts = dateString.split('-');
+                if (parts.length === 3) {
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+                return dateString;
+            }
+
+            if (dateString.includes(' ')) {
+                return dateString.split(' ')[0];
+            }
+
+            return dateString;
+        } catch (e) {
+            return dateString;
+        }
+    }
+
     function generateRowHtml(node, level, parentPositionCode, indentationStep) {
         var rowClass = level > 0 ? 'child-row child-of-' + parentPositionCode : 'parent-row';
         var currentPadding = level * indentationStep;
@@ -176,7 +203,7 @@
 
         var expanderCellContent = '';
         if (node.Subordinates && node.Subordinates.length > 0) {
-            expanderCellContent = `<span class="expander-icon p-0"><i class="bi bi-chevron-right"></i></span>`;
+            expanderCellContent = `<span class="expander-icon"><i class="bi bi-chevron-right"></i></span>`;
         }
         html += `<td style="padding-left: ${currentPadding}px;">${expanderCellContent}</td>`;
 
@@ -190,7 +217,9 @@
         var statusText = node.Occupant ? 'ATIVO' : 'VAGA';
         html += `<td><span class="${statusClass}"><span class="icon"></span> <span>${statusText}</span></span></td>`;
 
-        html += `<td>${node.Occupant && node.Occupant.Since ? node.Occupant.Since : '-'}</td>`;
+        var formattedSinceDate = formatDateString(node.Occupant && node.Occupant.Since ? node.Occupant.Since : '-');
+        html += `<td>${formattedSinceDate}</td>`;
+
         html += `<td>${node.HubName || '-'}</td>`;
         html += `<td class="actions-cell">
                     <button title="Detalhes" onclick="viewDetails(${node.PositionCode})"><i class="bi bi-search"></i></button>
