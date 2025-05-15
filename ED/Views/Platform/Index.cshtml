@@ -23,6 +23,7 @@
             padding: 10px 12px;
             text-align: left;
             border-bottom: 1px solid #e0e0e0;
+            vertical-align: middle;
         }
 
         #organogramaTable th {
@@ -76,46 +77,90 @@
         color: #c82333;
     }
 
-    .actions-cell button {
-        padding: 4px 8px;
-        margin-left: 5px;
-        cursor: pointer;
-        border-radius: 4px;
-        font-size: 0.9em;
-        border: 1px solid #ccc;
-        background-color: #f8f9fa;
-        color: #333;
+    .actions-cell {
+        position: relative;
+        display: inline-flex;
+        column-gap: 4px;
+        align-items: center;
     }
 
-        .actions-cell button:hover {
-            background-color: #e2e6ea;
-            border-color: #dae0e5;
+        .actions-cell button {
+            padding: 4px 8px;
+            margin-left: 4px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+            border: 1px solid #ccc;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.2;
         }
 
-    .actions-cell .bi {
-        font-size: 1em;
-        vertical-align: middle;
+            .actions-cell button:hover {
+                background-color: #e2e6ea;
+                border-color: #dae0e5;
+            }
+
+        .actions-cell .bi {
+            font-size: 1em;
+            vertical-align: middle;
+        }
+
+    .actions-dropdown {
+        display: none;
+        position: absolute;
+        background-color: white;
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 4px;
+        padding: 5px 0;
+        z-index: 1000;
+        min-width: 150px;
     }
+
+        .actions-dropdown ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+            .actions-dropdown ul li {
+                padding: 8px 12px;
+                cursor: pointer;
+                font-size: 0.9em;
+            }
+
+                .actions-dropdown ul li:hover {
+                    background-color: #f1f1f1;
+                }
 </style>
 
 <div class="organograma-grid-container">
-    <h3>Organograma da Plataforma</h3>
     <table id="organogramaTable">
         <thead>
             <tr>
-                <th style="width: 40px;"></th>
+                <th style="width: 20px;" class="p-0"></th>
                 <th>Função/Cargo</th>
                 <th>Ocupante (Cód. Funcional)</th>
                 <th>Status</th>
                 <th>Desde</th>
                 <th>Hub</th>
-                <th style="width: 120px;">Ações</th>
+                <th style="width: 150px;">Ações</th>
             </tr>
         </thead>
         <tbody>
         </tbody>
     </table>
 </div>
+
+<div id="actionsDropdownTemplate" class="actions-dropdown" style="display:none;">
+    <ul>
+        <li onclick="handleAction('view_details_specific', this)">Ver Detalhes Específicos</li>
+        <li onclick="handleAction('view_logs', this)">Ver Logs</li>
+        <li onclick="handleAction('restart_item', this)">Reiniciar</li>
+    </ul>
+</div>
+
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
@@ -125,7 +170,7 @@
         tableBody.empty();
 
         var initialLevel = 0;
-        var indentationStep = 40;
+        var indentationStep = 20;
 
         if (organogramaData && organogramaData.PositionCode) {
             tableBody.append(generateRowHtml(organogramaData, initialLevel, null, indentationStep));
@@ -168,6 +213,12 @@
                 }
             }
         });
+
+        $(document).on('click', function(event) {
+            if (!$(event.target).closest('.actions-cell .more-actions-btn, .actions-dropdown').length) {
+                $('.actions-dropdown').hide();
+            }
+        });
     });
 
     function formatDateString(dateString) {
@@ -175,7 +226,6 @@
             return '-';
         }
         try {
-
             if (dateString.includes('T')) {
                 dateString = dateString.split('T')[0];
                 var parts = dateString.split('-');
@@ -184,11 +234,9 @@
                 }
                 return dateString;
             }
-
             if (dateString.includes(' ')) {
                 return dateString.split(' ')[0];
             }
-
             return dateString;
         } catch (e) {
             return dateString;
@@ -199,13 +247,13 @@
         var rowClass = level > 0 ? 'child-row child-of-' + parentPositionCode : 'parent-row';
         var currentPadding = level * indentationStep;
 
-        var html = `<tr data-position-code="${node.PositionCode}" data-level="${level}" class="${rowClass}">`;
+        var html = `<tr data-position-code="${node.PositionCode}" data-level="${level}" data-role="${node.Role}" class="${rowClass}">`;
 
         var expanderCellContent = '';
         if (node.Subordinates && node.Subordinates.length > 0) {
             expanderCellContent = `<span class="expander-icon"><i class="bi bi-chevron-right"></i></span>`;
         }
-        html += `<td style="padding-left: ${currentPadding}px;">${expanderCellContent}</td>`;
+        html += `<td style="padding-left: ${currentPadding}px; width: ${20 + currentPadding}px;">${expanderCellContent}</td>`;
 
         html += `<td class="role-cell">${node.Role || '-'}</td>`;
 
@@ -219,12 +267,37 @@
 
         var formattedSinceDate = formatDateString(node.Occupant && node.Occupant.Since ? node.Occupant.Since : '-');
         html += `<td>${formattedSinceDate}</td>`;
-
         html += `<td>${node.HubName || '-'}</td>`;
-        html += `<td class="actions-cell">
-                    <button title="Detalhes" onclick="viewDetails(${node.PositionCode})"><i class="bi bi-search"></i></button>
-                    <button title="Editar" onclick="editPosition(${node.PositionCode})"><i class="bi bi-pencil-square"></i></button>
-                 </td>`;
+
+        var actionsHtml = `<button title="Detalhes" onclick="viewDetails(${node.PositionCode})"><i class="bi bi-search"></i></button>
+                           <button title="Editar" onclick="editPosition(${node.PositionCode})"><i class="bi bi-pencil-square"></i></button>`;
+
+        var canAddSubordinate = true;
+        var roleNormalized = (node.Role || "").toLowerCase();
+
+        if (roleNormalized === 'assistente') {
+            canAddSubordinate = false;
+        } else if (roleNormalized === 'gerente de relacionamento') {
+            var assistantCount = 0;
+            if (node.Subordinates && node.Subordinates.length > 0) {
+                node.Subordinates.forEach(function(sub) {
+                    if ((sub.Role || "").toLowerCase() === 'assistente') {
+                        assistantCount++;
+                    }
+                });
+            }
+            if (assistantCount >= 1) {
+                canAddSubordinate = false;
+            }
+        }
+
+        if (canAddSubordinate) {
+            actionsHtml += ` <button title="Adicionar Subordinado" class="add-sub-btn" onclick="initiateAddSubordinate(${node.PositionCode}, '${node.Role}')"><i class="bi bi-plus-circle"></i></button>`;
+        }
+
+        actionsHtml += ` <button title="Mais Ações" class="more-actions-btn" onclick="toggleMoreActions(event, ${node.PositionCode}, this)"><i class="bi bi-three-dots"></i></button>`;
+
+        html += `<td class="actions-cell">${actionsHtml}</td>`;
         html += `</tr>`;
         return html;
     }
@@ -244,9 +317,41 @@
     }
 
     function viewDetails(positionCode) {
-        alert('Ver detalhes da Posição: ' + positionCode);
+        alert('Ver detalhes da Posição: ' + positionCode + '. Lógica a ser implementada.');
     }
     function editPosition(positionCode) {
-        alert('Editar Posição: ' + positionCode);
+        alert('Editar Posição: ' + positionCode + '. Lógica a ser implementada.');
     }
+    function initiateAddSubordinate(parentPositionCode, parentRole) {
+        alert('Adicionar subordinado à Posição: ' + parentPositionCode + ' (Cargo: ' + parentRole + '). Lógica a ser implementada.');
+    }
+
+    function toggleMoreActions(event, positionCode, buttonElement) {
+        event.stopPropagation();
+        $('.actions-dropdown').not($(buttonElement).parent().find('.actions-dropdown')).hide();
+
+        var $dropdown = $(buttonElement).parent().find('.actions-dropdown');
+        if ($dropdown.length === 0) {
+            $dropdown = $('#actionsDropdownTemplate').clone().removeAttr('id').data('positionCode', positionCode);
+            $(buttonElement).parent().append($dropdown);
+        }
+
+        var buttonPos = $(buttonElement).position();
+        var cellWidth = $(buttonElement).parent().width();
+        var dropdownWidth = $dropdown.outerWidth();
+
+        $dropdown.css({
+            top: buttonPos.top + $(buttonElement).outerHeight() + 2,
+            left: buttonPos.left + $(buttonElement).outerWidth() - dropdownWidth
+        });
+        $dropdown.toggle();
+    }
+
+    function handleAction(actionType, listItemElement) {
+        var $dropdown = $(listItemElement).closest('.actions-dropdown');
+        var positionCode = $dropdown.data('positionCode');
+        $('.actions-dropdown').hide();
+        alert('Ação: ' + actionType + ' para Posição: ' + positionCode + '. Lógica a ser implementada.');
+    }
+
 </script>
