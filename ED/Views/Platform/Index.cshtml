@@ -1,351 +1,223 @@
 ﻿@model dynamic
 
-@{
-    // Adicione esta linha no início da view para facilitar o debug
-    var hasPlatformManager = Model != null && Model.HasPlatformManager;
-}
-
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.8.1/font/bootstrap-icons.min.css" rel="stylesheet">
 <style>
-    .employee-grid {
+    .organograma-grid-container {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    .employee-level {
-        margin-left: 20px;
-        border-left: 2px solid #e0e0e0;
-        padding-left: 15px;
-    }
-
-    .employee-card {
-        background: white;
         border-radius: 8px;
+        margin-top: 20px;
+        background-color: #ffffff;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 10px;
-        overflow: hidden;
-        transition: all 0.3s ease;
     }
 
-        .employee-card:hover {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-            transform: translateY(-2px);
+    #organogramaTable {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9em;
+        color: #333;
+    }
+
+        #organogramaTable th,
+        #organogramaTable td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
         }
 
-    .employee-header {
-        display: flex;
-        align-items: center;
-        padding: 12px 15px;
+        #organogramaTable th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        #organogramaTable tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+
+    .expander-icon {
         cursor: pointer;
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #e9ecef;
+        width: 20px;
+        text-align: center;
+        display: inline-block;
+        transition: transform 0.2s ease-in-out;
+        color: #555;
     }
 
-        .employee-header.active {
-            background-color: #e9f5ff;
+        .expander-icon.expanded {
+            transform: rotate(90deg);
         }
 
-    .employee-arrow {
-        margin-right: 10px;
-        transition: transform 0.3s ease;
-        color: #6c757d;
-    }
-
-    .employee-header.active .employee-arrow {
-        transform: rotate(90deg);
-        color: #007bff;
-    }
-
-    .employee-content {
-        display: none;
-        padding: 15px;
-    }
-
-    .employee-header.active + .employee-content {
-        display: block;
-    }
-
-    .employee-info {
-        display: flex;
-        align-items: center;
-        padding: 8px 0;
-    }
-
-    .employee-avatar {
-        width: 40px;
-        height: 40px;
+    .status-active .icon, .status-vacant .icon {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
-        background-color: #007bff;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 12px;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    .status-active .icon {
+        background-color: #28a745;
+    }
+
+    .status-vacant .icon {
+        background-color: #dc3545;
+    }
+
+    .status-active span, .status-vacant span {
         font-weight: bold;
     }
 
-    .employee-details {
-        flex: 1;
+    .status-active span {
+        color: #218838;
     }
 
-    .employee-name {
-        font-weight: 600;
-        color: #212529;
-        margin-bottom: 2px;
+    .status-vacant span {
+        color: #c82333;
     }
 
-    .employee-role {
-        font-size: 0.85rem;
-        color: #6c757d;
+    .actions-cell button {
+        padding: 4px 8px;
+        margin-left: 5px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 0.9em;
+        border: 1px solid #ccc;
+        background-color: #f8f9fa;
+        color: #333;
     }
 
-    .employee-status {
-        font-size: 0.75rem;
-        padding: 2px 8px;
-        border-radius: 12px;
-        background-color: #e8f5e9;
-        color: #2e7d32;
-    }
+        .actions-cell button:hover {
+            background-color: #e2e6ea;
+            border-color: #dae0e5;
+        }
 
-    .status-vacant {
-        background-color: #ffebee;
-        color: #c62828;
-    }
-
-    /* Cores diferentes para cada tipo de função */
-    .role-platform-manager {
-        border-left: 4px solid #cc092f;
-    }
-
-    .role-management-manager {
-        border-left: 4px solid #e03c50;
-    }
-
-    .role-relationship-manager {
-        border-left: 4px solid #4a6baf;
-    }
-
-    .role-assistant {
-        border-left: 4px solid #6c757d;
-    }
-
-    .role-other {
-        border-left: 4px solid #6c757d;
+    .actions-cell .bi {
+        font-size: 1em;
+        vertical-align: middle;
     }
 </style>
 
-<div class="employee-grid">
-    @if (Model == null || Model.PlatformManager == null)
-    {
-        <div class="alert alert-info">
-            Esta plataforma não tem Gerente de Plataforma definido.
-            <button class="btn btn-sm btn-primary ms-2" onclick="openAddPlatformManagerModal()">
-                Adicionar Gerente
-            </button>
-        </div>
-    }
-    else
-    {
-        <!-- Gerente de Plataforma -->
-        <div class="employee-card role-platform-manager">
-            <div class="employee-header" onclick="toggleEmployee('platform-manager')">
-                <span class="employee-arrow">
-                    <i class="bi bi-chevron-right"></i>
-                </span>
-                <div class="employee-info">
-                    <div class="employee-avatar">
-                        @GetInitials(Model.PlatformManager.Employee?.Name ?? "GP")
-                    </div>
-                    <div class="employee-details">
-                        <div class="employee-name">
-                            @(Model.PlatformManager.Employee?.Name ?? "Vaga - Gerente de Plataforma")
-                        </div>
-                        <div class="employee-role">
-                            @Model.PlatformManager.Role
-                            @if (!string.IsNullOrEmpty(Model.PlatformManager.HubName))
-                            {
-                                <span>(@Model.PlatformManager.HubName)</span>
-                            }
-                        </div>
-                    </div>
-                    <span class="employee-status @(Model.PlatformManager.Employee == null ? "status-vacant" : "")">
-                        @(Model.PlatformManager.Employee == null ? "VAGA" : "ATIVO")
-                    </span>
-                </div>
-            </div>
-            <div class="employee-content" id="platform-manager-content">
-                <div class="employee-level">
-                    <!-- Gerentes de Gestão -->
-                    @foreach (var gg in Model.PlatformManager.ManagementManagers)
-                    {
-                        <div class="employee-card role-management-manager">
-                            <div class="employee-header" onclick="toggleEmployee('gg-@gg.Position')">
-                                <span class="employee-arrow">
-                                    <i class="bi @(gg.RelationshipManagers.Count > 0 ? "bi-chevron-right" : "bi-person")"></i>
-                                </span>
-                                <div class="employee-info">
-                                    <div class="employee-avatar">
-                                        @GetInitials(gg.Employee?.Name ?? "GG")
-                                    </div>
-                                    <div class="employee-details">
-                                        <div class="employee-name">
-                                            @(gg.Employee?.Name ?? "Vaga - Gerente de Gestão")
-                                        </div>
-                                        <div class="employee-role">
-                                            @gg.Role
-                                            @if (!string.IsNullOrEmpty(gg.HubName))
-                                            {
-                                                <span>(@gg.HubName)</span>
-                                            }
-                                        </div>
-                                    </div>
-                                    <span class="employee-status @(gg.Employee == null ? "status-vacant" : "")">
-                                        @(gg.Employee == null ? "VAGA" : "ATIVO")
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="employee-content" id="gg-@gg.Position-content">
-                                <div class="employee-level">
-                                    <!-- Gerentes de Relacionamento -->
-                                    @foreach (var gr in gg.RelationshipManagers)
-                                    {
-                                        <div class="employee-card role-relationship-manager">
-                                            <div class="employee-header" onclick="toggleEmployee('gr-@gr.Position')">
-                                                <span class="employee-arrow">
-                                                    <i class="bi @(gr.Assistants.Count > 0 ? "bi-chevron-right" : "bi-person")"></i>
-                                                </span>
-                                                <div class="employee-info">
-                                                    <div class="employee-avatar">
-                                                        @GetInitials(gr.Employee?.Name ?? "GR")
-                                                    </div>
-                                                    <div class="employee-details">
-                                                        <div class="employee-name">
-                                                            @(gr.Employee?.Name ?? "Vaga - Gerente de Relacionamento")
-                                                        </div>
-                                                        <div class="employee-role">
-                                                            @gr.Role
-                                                            @if (!string.IsNullOrEmpty(gr.HubName))
-                                                            {
-                                                                <span>(@gr.HubName)</span>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                    <span class="employee-status @(gr.Employee == null ? "status-vacant" : "")">
-                                                        @(gr.Employee == null ? "VAGA" : "ATIVO")
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="employee-content" id="gr-@gr.Position-content">
-                                                <div class="employee-level">
-                                                    <!-- Assistente -->
-                                                    @foreach (var a in gr.Assistants)
-                                                    {
-                                                        <div class="employee-card role-assistant">
-                                                            <div class="employee-header">
-                                                                <span class="employee-arrow">
-                                                                    <i class="bi bi-person"></i>
-                                                                </span>
-                                                                <div class="employee-info">
-                                                                    <div class="employee-avatar">
-                                                                        @GetInitials(a.Employee?.Name ?? "AS")
-                                                                    </div>
-                                                                    <div class="employee-details">
-                                                                        <div class="employee-name">
-                                                                            @(a.Employee?.Name ?? "Vaga - Assistente")
-                                                                        </div>
-                                                                        <div class="employee-role">
-                                                                            @a.Role
-                                                                            @if (!string.IsNullOrEmpty(a.HubName))
-                                                                            {
-                                                                                <span>(@a.HubName)</span>
-                                                                            }
-                                                                        </div>
-                                                                    </div>
-                                                                    <span class="employee-status @(a.Employee == null ? "status-vacant" : "")">
-                                                                        @(a.Employee == null ? "VAGA" : "ATIVO")
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    }
-
-                    <!-- Outras Funções -->
-                    @foreach (var of in Model.PlatformManager.OtherFunctions)
-                    {
-                        <div class="employee-card role-other">
-                            <div class="employee-header">
-                                <span class="employee-arrow">
-                                    <i class="bi bi-person"></i>
-                                </span>
-                                <div class="employee-info">
-                                    <div class="employee-avatar">
-                                        @GetInitials(of.Employee?.Name ?? "OF")
-                                    </div>
-                                    <div class="employee-details">
-                                        <div class="employee-name">
-                                            @(of.Employee?.Name ?? $"Vaga - {of.Role}")
-                                        </div>
-                                        <div class="employee-role">
-                                            @of.Role
-                                            @if (!string.IsNullOrEmpty(of.HubName))
-                                            {
-                                                <span>(@of.HubName)</span>
-                                            }
-                                        </div>
-                                    </div>
-                                    <span class="employee-status @(of.Employee == null ? "status-vacant" : "")">
-                                        @(of.Employee == null ? "VAGA" : "ATIVO")
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    }
+<div class="organograma-grid-container">
+    <table id="organogramaTable">
+        <thead>
+            <tr>
+                <th style="width: 20px;" class="p-0"></th>
+                <th>Função/Cargo</th>
+                <th>Ocupante (Cód. Funcional)</th>
+                <th>Status</th>
+                <th>Ocupa posição desde</th>
+                <th>Hub</th>
+                <th style="width: 120px;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    function toggleEmployee(id) {
-        const header = $(`#${id}-content`).prev();
-        const content = $(`#${id}-content`);
+    $(document).ready(function() {
+        var organogramaData = @Html.Raw(Json.Encode(Model));
+        var tableBody = $('#organogramaTable tbody');
+        tableBody.empty();
 
-        header.toggleClass('active');
-        content.slideToggle();
-    }
+        var initialLevel = 0;
+        var indentationStep = 20;
 
-    function openAddPlatformManagerModal() {
-        // Implemente a abertura do modal para adicionar GP
-        alert("Abrir modal para adicionar Gerente de Plataforma");
-    }
+        if (organogramaData && organogramaData.PositionCode) {
+            tableBody.append(generateRowHtml(organogramaData, initialLevel, null, indentationStep));
+        } else {
+            var platformIdFromUrl = window.location.pathname.split('/').pop();
+            tableBody.html('<tr><td colspan="7" style="text-align:center;">Não foi possível carregar os dados do organograma para a plataforma ID ' + platformIdFromUrl + '.</td></tr>');
+        }
 
-    function GetInitials(name) {
-        if (!name) return "";
-        return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-    }
+        $('#organogramaTable tbody').on('click', '.expander-icon', function() {
+            var $icon = $(this);
+            var $parentRow = $icon.closest('tr');
+            var positionCode = $parentRow.data('position-code');
+            var currentLevel = parseInt($parentRow.data('level'), 10);
 
-    $(document).ready(function () {
-        $(".employee-header").first().addClass('active');
-        $(".employee-content").first().show();
+            var nodeData = findNodeByPositionCode(organogramaData, positionCode);
+
+            if (!nodeData) {
+                return;
+            }
+
+            if ($parentRow.hasClass('expanded')) {
+                $parentRow.removeClass('expanded');
+                $icon.removeClass('expanded');
+                $('tr.child-of-' + positionCode).each(function() {
+                    var childPositionCode = $(this).data('position-code');
+                    if ($(this).hasClass('expanded')) {
+                         $('tr.child-of-' + childPositionCode).remove();
+                    }
+                    $(this).remove();
+                });
+            } else {
+                if (nodeData.Subordinates && nodeData.Subordinates.length > 0) {
+                    var subItemsHtml = '';
+                    nodeData.Subordinates.forEach(function(subNode) {
+                        subItemsHtml += generateRowHtml(subNode, currentLevel + 1, positionCode, indentationStep);
+                    });
+                    $parentRow.after(subItemsHtml);
+                    $parentRow.addClass('expanded');
+                    $icon.addClass('expanded');
+                }
+            }
+        });
     });
-</script>
 
-@functions {
-    public string GetInitials(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return "GP";
-        var parts = name.Split(' ');
-        return (parts.Length >= 2)
-            ? $"{parts[0][0]}{parts[1][0]}".ToUpper()
-            : name.Length >= 2
-                ? name.Substring(0, 2).ToUpper()
-                : name.ToUpper();
+    function generateRowHtml(node, level, parentPositionCode, indentationStep) {
+        var rowClass = level > 0 ? 'child-row child-of-' + parentPositionCode : 'parent-row';
+        var currentPadding = level * indentationStep;
+
+        var html = `<tr data-position-code="${node.PositionCode}" data-level="${level}" class="${rowClass}">`;
+
+        var expanderCellContent = '';
+        if (node.Subordinates && node.Subordinates.length > 0) {
+            expanderCellContent = `<span class="expander-icon p-0"><i class="bi bi-chevron-right"></i></span>`;
+        }
+        html += `<td style="padding-left: ${currentPadding}px;">${expanderCellContent}</td>`;
+
+        html += `<td class="role-cell">${node.Role || '-'}</td>`;
+
+        var occupantName = node.Occupant ? node.Occupant.Name : 'Vaga';
+        var occupantCode = node.Occupant ? node.Occupant.FunctionalCode : '-';
+        html += `<td>${occupantName} (${occupantCode})</td>`;
+
+        var statusClass = node.Occupant ? 'status-active' : 'status-vacant';
+        var statusText = node.Occupant ? 'ATIVO' : 'VAGA';
+        html += `<td><span class="${statusClass}"><span class="icon"></span> <span>${statusText}</span></span></td>`;
+
+        html += `<td>${node.Occupant && node.Occupant.Since ? node.Occupant.Since : '-'}</td>`;
+        html += `<td>${node.HubName || '-'}</td>`;
+        html += `<td class="actions-cell">
+                    <button title="Detalhes" onclick="viewDetails(${node.PositionCode})"><i class="bi bi-search"></i></button>
+                    <button title="Editar" onclick="editPosition(${node.PositionCode})"><i class="bi bi-pencil-square"></i></button>
+                 </td>`;
+        html += `</tr>`;
+        return html;
     }
-}
+
+    function findNodeByPositionCode(currentNode, targetPositionCode) {
+        if (!currentNode) return null;
+        if (currentNode.PositionCode === targetPositionCode) {
+            return currentNode;
+        }
+        if (currentNode.Subordinates && currentNode.Subordinates.length > 0) {
+            for (var i = 0; i < currentNode.Subordinates.length; i++) {
+                var found = findNodeByPositionCode(currentNode.Subordinates[i], targetPositionCode);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    function viewDetails(positionCode) {
+        alert('Ver detalhes da Posição: ' + positionCode);
+    }
+    function editPosition(positionCode) {
+        alert('Editar Posição: ' + positionCode);
+    }
+</script>

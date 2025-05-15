@@ -10,7 +10,75 @@ namespace ED.Controllers
     {
         public ActionResult Index(int platformId)
         {
-            return PartialView();
+            // Lógica copiada/adaptada de Index_v2 para buscar e preparar os dados
+            // 1. Dados de Hierarquia
+            var hierarchies = new List<Hierarquia>
+            {
+                new Hierarquia { Juncao = 1519, PosicaoGestao = 981519001, PosicaoRelac = 971519001, PosicaoAssist = 961519001 },
+                new Hierarquia { Juncao = 1519, PosicaoGestao = 981519002, PosicaoRelac = 971519002, PosicaoAssist = 961519002 },
+                new Hierarquia { Juncao = 1519, PosicaoGestao = 981519003, PosicaoRelac = 971519003, PosicaoAssist = 961519003 }
+                // Adicione ou busque do banco conforme sua necessidade
+            }.Where(h => h.Juncao == platformId).ToList();
+
+            // 2. Todas as posições existentes
+            var positions = new List<Posicao>
+            {
+                // Gerente de Plataforma
+                new Posicao { CodigoPosicao = 991519000, Juncao = 1519, CodigoFuncao = 1, Hub = false },
+            
+                // Gerentes de Gestão
+                new Posicao { CodigoPosicao = 981519001, Juncao = 1519, CodigoFuncao = 2, Hub = true, HubName = "Hub SP 1" },
+                new Posicao { CodigoPosicao = 981519002, Juncao = 1519, CodigoFuncao = 2, Hub = true, HubName = "Hub SP 2" },
+                new Posicao { CodigoPosicao = 981519003, Juncao = 1519, CodigoFuncao = 2, Hub = false },
+            
+                // Gerentes de Relacionamento
+                new Posicao { CodigoPosicao = 971519001, Juncao = 1519, CodigoFuncao = 3, Hub = true, HubName = "Hub SP 1" },
+                new Posicao { CodigoPosicao = 971519002, Juncao = 1519, CodigoFuncao = 3, Hub = true, HubName = "Hub SP 2" },
+                new Posicao { CodigoPosicao = 971519003, Juncao = 1519, CodigoFuncao = 3, Hub = false },
+            
+                // Assistente
+                new Posicao { CodigoPosicao = 961519001, Juncao = 1519, CodigoFuncao = 4, Hub = true, HubName = "Hub SP 1" },
+                new Posicao { CodigoPosicao = 961519002, Juncao = 1519, CodigoFuncao = 4, Hub = true, HubName = "Hub SP 2" },
+                new Posicao { CodigoPosicao = 961519003, Juncao = 1519, CodigoFuncao = 4, Hub = false },
+            
+                // Outras funções (não hierárquicas)
+                new Posicao { CodigoPosicao = 901519001, Juncao = 1519, CodigoFuncao = 5, Hub = false }, // Desenvolvedor
+                new Posicao { CodigoPosicao = 901519002, Juncao = 1519, CodigoFuncao = 6, Hub = false }, // Analista
+                new Posicao { CodigoPosicao = 901519003, Juncao = 1519, CodigoFuncao = 7, Hub = false }  // Agente de Projetos
+            }.Where(p => p.Juncao == platformId).ToList();
+
+            // 3. Definição de TODAS as funções
+            var functions = new List<Funcao>
+            {
+                new Funcao { Id = 1, Nome = "Gerente de Plataforma", FuncaoPaiID = 0 },
+                new Funcao { Id = 2, Nome = "Gerente de Gestão", FuncaoPaiID = 1 },
+                new Funcao { Id = 3, Nome = "Gerente de Relacionamento", FuncaoPaiID = 2 },
+                new Funcao { Id = 4, Nome = "Assistente", FuncaoPaiID = 3 },
+                new Funcao { Id = 5, Nome = "Desenvolvedor", FuncaoPaiID = 1 },
+                new Funcao { Id = 6, Nome = "Analista", FuncaoPaiID = 1 },
+                new Funcao { Id = 7, Nome = "Agente de Projetos", FuncaoPaiID = 1 }
+            };
+
+            // 4. Funcionários
+            var employees = new List<Funcionario>
+            {
+                new Funcionario { ID = 1, Nome = "Carlos Silva", Posicao = 991519000, CodigoFuncional = "GP001", OcupaFuncaoDesde = new DateTime(2020,1,15) },
+                new Funcionario { ID = 2, Nome = "Ana Oliveira", Posicao = 981519001, CodigoFuncional = "GG001", OcupaFuncaoDesde = new DateTime(2021,3,10) },
+                new Funcionario { ID = 3, Nome = "Bruno Costa", Posicao = 981519002, CodigoFuncional = "GG002", OcupaFuncaoDesde = new DateTime(2022,5,20) },
+                new Funcionario { ID = 4, Nome = "Daniela Lima", Posicao = 971519001, CodigoFuncional = "GR001", OcupaFuncaoDesde = new DateTime(2021,6,1) },
+                new Funcionario { ID = 5, Nome = "Eduardo Santos", Posicao = 971519003, CodigoFuncional = "GR003", OcupaFuncaoDesde = new DateTime(2023,1,5) },
+                new Funcionario { ID = 6, Nome = "Fernanda Rocha", Posicao = 961519001, CodigoFuncional = "AS001", OcupaFuncaoDesde = new DateTime(2022,2,25) },
+                new Funcionario { ID = 7, Nome = "Gabriel Almeida", Posicao = 961519002, CodigoFuncional = "AS002", OcupaFuncaoDesde = new DateTime(2023,3,15) },
+                new Funcionario { ID = 8, Nome = "Helena Torres", Posicao = 901519001, CodigoFuncional = "DEV001", OcupaFuncaoDesde = new DateTime(2022,11,5) },
+                new Funcionario { ID = 9, Nome = "Igor Mendes", Posicao = 901519003, CodigoFuncional = "AP001", OcupaFuncaoDesde = new DateTime(2023,4,12) }
+            };
+
+            // Construir o organograma
+            var organograma = BuildOrganograma(hierarchies, positions, functions, employees);
+
+            // Passa o objeto 'organograma' para a PartialView.
+            // A view Index.cshtml deve ser configurada com @model dynamic
+            return PartialView(organograma);
         }
 
         public ActionResult Index_v2(int platformId)
