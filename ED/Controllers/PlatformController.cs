@@ -342,5 +342,26 @@ namespace ED.Controllers
 
             return PartialView("_PlatformButtons", platformData);
         }
+
+        [HttpPost]
+        public JsonResult FillPosition(long positionCode, int junction)
+        {
+            try
+            {
+                var updatedOccupantData = new
+                {
+                    Name = "Matheus Szoke",
+                    Junction = junction,
+                    FunctionalCode = "m503667",
+                    Since = DateTime.Now.ToString("dd/MM/yyyy")
+                };
+
+                return this.Json(new { success = true, updatedOccupantData });
+            }
+            catch (Exception)
+            {
+                return this.Json(new { success = false, message = "Erro no servidor ao tentar preencher a posição." });
+            }
+        }
     }
 }

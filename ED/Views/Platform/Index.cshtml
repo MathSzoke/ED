@@ -79,12 +79,9 @@
 
     .actions-cell {
         position: relative;
-        display: inline-flex;
-        column-gap: 4px;
-        align-items: center;
     }
 
-        .actions-cell button {
+        .actions-cell button, .occupant-cell button.fill-position-btn { /* Incluindo o botão de preencher */
             padding: 4px 8px;
             margin-left: 4px;
             cursor: pointer;
@@ -96,15 +93,44 @@
             line-height: 1.2;
         }
 
-            .actions-cell button:hover {
-                background-color: #e2e6ea;
-                border-color: #dae0e5;
-            }
+    .occupant-cell button.fill-position-btn { /* Estilo específico para o botão de preencher */
+        margin-left: 0;
+        background-color: #e9f5ff;
+        border-color: #aed6f1;
+        color: #007bff;
+    }
 
-        .actions-cell .bi {
-            font-size: 1em;
-            vertical-align: middle;
+        .occupant-cell button.fill-position-btn:hover {
+            background-color: #cfe8fc;
+            border-color: #9ccaf3;
         }
+
+
+    .actions-cell button:first-child {
+        margin-left: 0;
+    }
+
+    .actions-cell button.delete-btn {
+        background-color: #fddfdf;
+        border-color: #f7c5c5;
+        color: #c82333;
+    }
+
+        .actions-cell button.delete-btn:hover {
+            background-color: #fcc6c6;
+            border-color: #f5b3b3;
+        }
+
+
+    .actions-cell button:hover {
+        background-color: #e2e6ea;
+        border-color: #dae0e5;
+    }
+
+    .actions-cell .bi {
+        font-size: 1em;
+        vertical-align: middle;
+    }
 
     .actions-dropdown {
         display: none;
@@ -136,6 +162,7 @@
 </style>
 
 <div class="organograma-grid-container">
+    <h3>Organograma da Plataforma</h3>
     <table id="organogramaTable">
         <thead>
             <tr>
@@ -145,7 +172,7 @@
                 <th>Status</th>
                 <th>Desde</th>
                 <th>Hub</th>
-                <th style="width: 150px;">Ações</th>
+                <th style="width: 180px;">Ações</th>
             </tr>
         </thead>
         <tbody>
@@ -158,14 +185,17 @@
         <li onclick="handleAction('view_details_specific', this)">Ver Detalhes Específicos</li>
         <li onclick="handleAction('view_logs', this)">Ver Logs</li>
         <li onclick="handleAction('restart_item', this)">Reiniciar</li>
+        <li onclick="handleAction('delete_item_from_menu', this)">Deletar Posição</li>
     </ul>
 </div>
 
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    var organogramaData;
+
     $(document).ready(function() {
-        var organogramaData = @Html.Raw(Json.Encode(Model));
+        organogramaData = @Html.Raw(Json.Encode(Model));
         var tableBody = $('#organogramaTable tbody');
         tableBody.empty();
 
@@ -184,12 +214,9 @@
             var $parentRow = $icon.closest('tr');
             var positionCode = $parentRow.data('position-code');
             var currentLevel = parseInt($parentRow.data('level'), 10);
-
             var nodeData = findNodeByPositionCode(organogramaData, positionCode);
 
-            if (!nodeData) {
-                return;
-            }
+            if (!nodeData) { return; }
 
             if ($parentRow.hasClass('expanded')) {
                 $parentRow.removeClass('expanded');
@@ -222,81 +249,98 @@
     });
 
     function formatDateString(dateString) {
-        if (!dateString || dateString === '-') {
-            return '-';
-        }
+        if (!dateString || dateString === '-') { return '-'; }
         try {
             if (dateString.includes('T')) {
                 dateString = dateString.split('T')[0];
                 var parts = dateString.split('-');
-                if (parts.length === 3) {
-                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-                }
+                if (parts.length === 3) { return `${parts[2]}/${parts[1]}/${parts[0]}`; }
                 return dateString;
             }
-            if (dateString.includes(' ')) {
-                return dateString.split(' ')[0];
+            if (dateString.includes(' ')) { return dateString.split(' ')[0]; }
+            return dateString;
+        } catch (e) { return dateString; }
+    }
+
+    function refreshParentNodeUI(parentPositionCode, indentationStep) {
+        var $parentRow = $('tr[data-position-code="' + parentPositionCode + '"]');
+        var parentNodeData = findNodeByPositionCode(organogramaData, parentPositionCode);
+        var parentLevel = parseInt($parentRow.data('level'), 10);
+
+        if (!$parentRow.length || !parentNodeData) return;
+
+        var $expanderCell = $parentRow.children('td').first();
+        var $expanderIcon = $expanderCell.find('.expander-icon');
+
+        if (parentNodeData.Subordinates && parentNodeData.Subordinates.length > 0) {
+            if ($expanderIcon.length === 0) {
+                $expanderCell.prepend('<span class="expander-icon"><i class="bi bi-chevron-right"></i></span>');
             }
-            return dateString;
-        } catch (e) {
-            return dateString;
+        } else {
+            $expanderIcon.remove();
+             $parentRow.removeClass('expanded');
+        }
+
+        if ($parentRow.hasClass('expanded')) {
+            $('tr.child-of-' + parentPositionCode).remove();
+            var subItemsHtml = '';
+            if (parentNodeData.Subordinates && parentNodeData.Subordinates.length > 0) {
+                parentNodeData.Subordinates.forEach(function(subNode) {
+                    subItemsHtml += generateRowHtml(subNode, parentLevel + 1, parentPositionCode, indentationStep);
+                });
+            }
+            $parentRow.after(subItemsHtml);
         }
     }
 
     function generateRowHtml(node, level, parentPositionCode, indentationStep) {
         var rowClass = level > 0 ? 'child-row child-of-' + parentPositionCode : 'parent-row';
         var currentPadding = level * indentationStep;
-
         var html = `<tr data-position-code="${node.PositionCode}" data-level="${level}" data-role="${node.Role}" class="${rowClass}">`;
-
         var expanderCellContent = '';
         if (node.Subordinates && node.Subordinates.length > 0) {
             expanderCellContent = `<span class="expander-icon"><i class="bi bi-chevron-right"></i></span>`;
         }
         html += `<td style="padding-left: ${currentPadding}px; width: ${20 + currentPadding}px;">${expanderCellContent}</td>`;
-
         html += `<td class="role-cell">${node.Role || '-'}</td>`;
 
-        var occupantName = node.Occupant ? node.Occupant.Name : 'Vaga';
-        var occupantCode = node.Occupant ? node.Occupant.FunctionalCode : '-';
-        html += `<td>${occupantName} (${occupantCode})</td>`;
+        var occupantCellHtml = '';
+        if (node.Occupant) {
+            occupantCellHtml = `${node.Occupant.Name} (${node.Occupant.FunctionalCode || '-'})`;
+        } else {
+            console.log(node.Junction);
+            occupantCellHtml = `<button class="btn fill-position-btn" onclick="initiateFillPosition(${node.PositionCode}, ${node.Junction})"><i class="bi bi-person-plus-fill"></i> Preencher</button>`;
+        }
+        html += `<td class="occupant-cell">${occupantCellHtml}</td>`;
 
         var statusClass = node.Occupant ? 'status-active' : 'status-vacant';
         var statusText = node.Occupant ? 'ATIVO' : 'VAGA';
         html += `<td><span class="${statusClass}"><span class="icon"></span> <span>${statusText}</span></span></td>`;
-
         var formattedSinceDate = formatDateString(node.Occupant && node.Occupant.Since ? node.Occupant.Since : '-');
         html += `<td>${formattedSinceDate}</td>`;
         html += `<td>${node.HubName || '-'}</td>`;
 
         var actionsHtml = `<button title="Detalhes" onclick="viewDetails(${node.PositionCode})"><i class="bi bi-search"></i></button>
                            <button title="Editar" onclick="editPosition(${node.PositionCode})"><i class="bi bi-pencil-square"></i></button>`;
-
         var canAddSubordinate = true;
         var roleNormalized = (node.Role || "").toLowerCase();
-
         if (roleNormalized === 'assistente') {
             canAddSubordinate = false;
         } else if (roleNormalized === 'gerente de relacionamento') {
             var assistantCount = 0;
             if (node.Subordinates && node.Subordinates.length > 0) {
                 node.Subordinates.forEach(function(sub) {
-                    if ((sub.Role || "").toLowerCase() === 'assistente') {
-                        assistantCount++;
-                    }
+                    if ((sub.Role || "").toLowerCase() === 'assistente') { assistantCount++; }
                 });
             }
-            if (assistantCount >= 1) {
-                canAddSubordinate = false;
-            }
+            if (assistantCount >= 1) { canAddSubordinate = false; }
         }
-
         if (canAddSubordinate) {
             actionsHtml += ` <button title="Adicionar Subordinado" class="add-sub-btn" onclick="initiateAddSubordinate(${node.PositionCode}, '${node.Role}')"><i class="bi bi-plus-circle"></i></button>`;
         }
 
+        actionsHtml += ` <button title="Deletar Posição" class="delete-btn" onclick="initiateDeletePosition(${node.PositionCode})"><i class="bi bi-trash"></i></button>`;
         actionsHtml += ` <button title="Mais Ações" class="more-actions-btn" onclick="toggleMoreActions(event, ${node.PositionCode}, this)"><i class="bi bi-three-dots"></i></button>`;
-
         html += `<td class="actions-cell">${actionsHtml}</td>`;
         html += `</tr>`;
         return html;
@@ -304,9 +348,7 @@
 
     function findNodeByPositionCode(currentNode, targetPositionCode) {
         if (!currentNode) return null;
-        if (currentNode.PositionCode === targetPositionCode) {
-            return currentNode;
-        }
+        if (currentNode.PositionCode === targetPositionCode) { return currentNode; }
         if (currentNode.Subordinates && currentNode.Subordinates.length > 0) {
             for (var i = 0; i < currentNode.Subordinates.length; i++) {
                 var found = findNodeByPositionCode(currentNode.Subordinates[i], targetPositionCode);
@@ -316,30 +358,201 @@
         return null;
     }
 
-    function viewDetails(positionCode) {
-        alert('Ver detalhes da Posição: ' + positionCode + '. Lógica a ser implementada.');
+    function removeRowAndChildrenFromDOM(positionCode) {
+        var $rowToRemove = $('tr[data-position-code="' + positionCode + '"]');
+        if ($rowToRemove.length === 0) return;
+        function removeChildrenRecursiveDOM(parentCode) {
+            $('tr.child-of-' + parentCode).each(function() {
+                var currentChildCode = $(this).data('position-code');
+                removeChildrenRecursiveDOM(currentChildCode);
+                $(this).remove();
+            });
+        }
+        removeChildrenRecursiveDOM(positionCode);
+        var parentCodeOfDeleted = $rowToRemove.attr('class').match(/child-of-(\d+)/);
+        $rowToRemove.remove();
+        if(parentCodeOfDeleted && parentCodeOfDeleted[1]){
+            refreshParentNodeUI(parseInt(parentCodeOfDeleted[1]), 20);
+        }
     }
-    function editPosition(positionCode) {
-        alert('Editar Posição: ' + positionCode + '. Lógica a ser implementada.');
+
+    function removeNodeFromDataStore(parentNode, targetPositionCode) {
+        if (!parentNode) return false;
+        if (parentNode.PositionCode === targetPositionCode && parentNode === organogramaData) {
+             organogramaData = null;
+             $('#organogramaTable tbody').html('<tr><td colspan="7" style="text-align:center;">Organograma vazio ou nó raiz deletado.</td></tr>');
+             return true;
+        }
+        if (!parentNode.Subordinates || parentNode.Subordinates.length === 0) { return false; }
+        for (var i = 0; i < parentNode.Subordinates.length; i++) {
+            var childNode = parentNode.Subordinates[i];
+            if (childNode.PositionCode === targetPositionCode) {
+                parentNode.Subordinates.splice(i, 1);
+                return true;
+            }
+            if (removeNodeFromDataStore(childNode, targetPositionCode)) { return true; }
+        }
+        return false;
     }
+
+    function addNodeToDataStore(parentPositionCode, newNodeData) {
+        var parentNode = findNodeByPositionCode(organogramaData, parentPositionCode);
+        if (parentNode) {
+            if (!parentNode.Subordinates) {
+                parentNode.Subordinates = [];
+            }
+            parentNode.Subordinates.push(newNodeData);
+            return true;
+        }
+        return false;
+    }
+
+    function updateOccupantInDataStore(positionCode, newOccupantData) {
+        var nodeToUpdate = findNodeByPositionCode(organogramaData, positionCode);
+        if (nodeToUpdate) {
+            nodeToUpdate.Occupant = newOccupantData;
+            return true;
+        }
+        return false;
+    }
+
+    function updateRowInDOM(positionCode, newOccupantData) {
+        var $rowToUpdate = $('tr[data-position-code="' + positionCode + '"]');
+        if ($rowToUpdate.length === 0) return;
+
+        var occupantCellHtml = `${newOccupantData.Name} (${newOccupantData.FunctionalCode || '-'})`;
+        $rowToUpdate.find('td.occupant-cell').html(occupantCellHtml);
+
+        var $statusCell = $rowToUpdate.find('td').eq(3);
+        $statusCell.html('<span class="status-active"><span class="icon"></span> <span>ATIVO</span></span>');
+
+        var $sinceCell = $rowToUpdate.find('td').eq(4);
+        $sinceCell.text(formatDateString(newOccupantData.Since));
+    }
+
+    function initiateFillPosition(positionCode, junction) {
+        $.ajax({
+            url: '@Url.Action("FillPosition", "Platform")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                positionCode: positionCode,
+                junction: junction
+            }),
+            success: function(response) {
+                if (response.success === true && response.updatedOccupantData) {
+                    if (updateOccupantInDataStore(positionCode, response.updatedOccupantData)) {
+                        updateRowInDOM(positionCode, response.updatedOccupantData);
+                    }
+                }
+            }
+        });
+    }
+
+
     function initiateAddSubordinate(parentPositionCode, parentRole) {
-        alert('Adicionar subordinado à Posição: ' + parentPositionCode + ' (Cargo: ' + parentRole + '). Lógica a ser implementada.');
+        var newRole = prompt("Digite a função do novo subordinado para " + parentRole + ":", "Nova Função");
+        if (!newRole) return;
+        var newOccupantName = prompt("Digite o nome do ocupante (deixe em branco se Vaga):", "");
+
+        var mockNewNodeData = {
+            PositionCode: Date.now(),
+            Role: newRole,
+            Occupant: newOccupantName ? { Name: newOccupantName, FunctionalCode: "NEW" + Date.now().toString().slice(-4), Since: new Date().toLocaleDateString('pt-BR') } : null,
+            HubName: "Automático",
+            Subordinates: []
+        };
+
+        $.ajax({
+            url: '@Url.Action("AddSubordinate", "Platform")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                parentPosCode: parentPositionCode,
+                role: mockNewNodeData.Role,
+                occupantName: newOccupantName,
+                hubName: mockNewNodeData.HubName
+            }),
+            success: function(response) {
+                if (response.success === true && response.newNodeData) {
+                    var added = addNodeToDataStore(parentPositionCode, response.newNodeData);
+                    if(added){
+                        refreshParentNodeUI(parentPositionCode, 20);
+                         var $parentRow = $('tr[data-position-code="' + parentPositionCode + '"]');
+                         if (!$parentRow.hasClass('expanded') && $parentRow.find('.expander-icon').length > 0) {
+                            $parentRow.find('.expander-icon').first().click();
+                         }
+                        alert('Subordinado adicionado com sucesso!');
+                    } else {
+                         alert('Erro ao adicionar subordinado aos dados locais.');
+                    }
+                } else {
+                    alert('Erro ao adicionar subordinado: ' + (response.message || 'Dados do novo nó não retornados.'));
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Simulando SUCESSO para adicionar (ERRO AJAX IGNORADO PARA TESTE)\nAdicionando nó mockado.');
+                var added = addNodeToDataStore(parentPositionCode, mockNewNodeData);
+                 if(added){
+                    refreshParentNodeUI(parentPositionCode, 20);
+                    var $parentRow = $('tr[data-position-code="' + parentPositionCode + '"]');
+                    if (!$parentRow.hasClass('expanded') && $parentRow.find('.expander-icon').length > 0) {
+                       $parentRow.find('.expander-icon').first().click();
+                    } else if ($parentRow.find('.expander-icon').length === 0 && findNodeByPositionCode(organogramaData, parentPositionCode).Subordinates.length > 0) {
+                       refreshParentNodeUI(parentPositionCode, 20);
+                       $parentRow.find('.expander-icon').first().click();
+                    }
+                    alert('Subordinado mock adicionado com sucesso!');
+                } else {
+                     alert('Erro ao adicionar subordinado mock aos dados locais.');
+                }
+            }
+        });
     }
+
+    function initiateDeletePosition(positionCode) {
+        if (!confirm('Tem certeza que deseja deletar esta posição e todos os seus subordinados?')) { return; }
+        $.ajax({
+            url: '@Url.Action("DeletePosition", "Platform")',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ positionCode: positionCode }),
+            success: function(response) {
+                if (response.success === true) {
+                    var $rowToRemove = $('tr[data-position-code="' + positionCode + '"]');
+                    var parentClass = $rowToRemove.attr('class');
+                    var parentCodeMatch = parentClass ? parentClass.match(/child-of-(\d+)/) : null;
+
+                    removeRowAndChildrenFromDOM(positionCode);
+                    var nodeRemovedFromData = removeNodeFromDataStore(organogramaData, positionCode);
+
+                    if (nodeRemovedFromData && parentCodeMatch && parentCodeMatch[1]) {
+                        refreshParentNodeUI(parseInt(parentCodeMatch[1]), 20);
+                    } else if (!organogramaData) {
+                         $('#organogramaTable tbody').html('<tr><td colspan="7" style="text-align:center;">Organograma vazio.</td></tr>');
+                    }
+                    alert('Posição deletada com sucesso!');
+                } else {
+                    alert('Erro ao deletar posição: ' + (response.message || 'Erro desconhecido.'));
+                }
+            },
+            error: function(xhr, status, error) { alert('Erro de comunicação ao tentar deletar a posição. Status: ' + status + ', Erro: ' + error); }
+        });
+    }
+
+    function viewDetails(positionCode) { alert('Ver detalhes da Posição: ' + positionCode + '. Lógica a ser implementada.'); }
+    function editPosition(positionCode) { alert('Editar Posição: ' + positionCode + '. Lógica a ser implementada.'); }
 
     function toggleMoreActions(event, positionCode, buttonElement) {
         event.stopPropagation();
         $('.actions-dropdown').not($(buttonElement).parent().find('.actions-dropdown')).hide();
-
         var $dropdown = $(buttonElement).parent().find('.actions-dropdown');
         if ($dropdown.length === 0) {
             $dropdown = $('#actionsDropdownTemplate').clone().removeAttr('id').data('positionCode', positionCode);
             $(buttonElement).parent().append($dropdown);
         }
-
         var buttonPos = $(buttonElement).position();
-        var cellWidth = $(buttonElement).parent().width();
         var dropdownWidth = $dropdown.outerWidth();
-
         $dropdown.css({
             top: buttonPos.top + $(buttonElement).outerHeight() + 2,
             left: buttonPos.left + $(buttonElement).outerWidth() - dropdownWidth
@@ -351,7 +564,7 @@
         var $dropdown = $(listItemElement).closest('.actions-dropdown');
         var positionCode = $dropdown.data('positionCode');
         $('.actions-dropdown').hide();
-        alert('Ação: ' + actionType + ' para Posição: ' + positionCode + '. Lógica a ser implementada.');
+        if (actionType === 'delete_item_from_menu') { initiateDeletePosition(positionCode); }
+        else { alert('Ação: ' + actionType + ' para Posição: ' + positionCode + '. Lógica a ser implementada.'); }
     }
-
 </script>
